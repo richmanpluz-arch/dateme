@@ -46,6 +46,7 @@ create index if not exists likes_liked_user_id_idx on public.likes (liked_user_i
 create index if not exists matches_user_one_idx on public.matches (user_one);
 create index if not exists matches_user_two_idx on public.matches (user_two);
 create index if not exists messages_match_created_idx on public.messages (match_id, created_at);
+create index if not exists messages_sender_id_idx on public.messages (sender_id);
 
 alter table public.profiles enable row level security;
 alter table public.likes enable row level security;
