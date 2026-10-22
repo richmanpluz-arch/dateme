@@ -332,7 +332,24 @@ export default function App() {
 
   async function sendVoiceNote() {
     if (!supabase || !session || !activeMatchId || !voiceBlob) return;
+    if (voiceBlob.size > 5 * 1024 * 1024) {
+      setNotice('That voice note is too large. Please record a shorter note (maximum 5 MB).');
+      return;
+    }
     setRecordingBusy(true);
+    const { data: matchRow } = await supabase.from('matches').select('user_one, user_two').eq('id', activeMatchId).maybeSingle();
+    if (!matchRow || ![matchRow.user_one, matchRow.user_two].includes(session.user.id)) {
+      setNotice('This conversation is no longer available.');
+      setRecordingBusy(false);
+      return;
+    }
+    const otherUserId = matchRow.user_one === session.user.id ? matchRow.user_two : matchRow.user_one;
+    const { data: blockRows } = await supabase.from('member_blocks').select('id').or(`and(blocker_id.eq.${session.user.id},blocked_user_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_user_id.eq.${session.user.id})`).limit(1);
+    if (blockRows?.length) {
+      setNotice('Sending voice notes is unavailable because one of these accounts has blocked the other.');
+      setRecordingBusy(false);
+      return;
+    }
     const path = `${activeMatchId}/${session.user.id}/${crypto.randomUUID()}.webm`;
     const { error: uploadError } = await supabase.storage.from('dateme-voice-notes').upload(path, voiceBlob, { contentType: voiceBlob.type || 'audio/webm', upsert: false });
     if (uploadError) { setNotice('Voice note upload is not ready yet. Please check the voice-note storage bucket setup.'); setRecordingBusy(false); return; }
