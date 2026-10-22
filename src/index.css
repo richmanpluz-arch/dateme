@@ -311,3 +311,45 @@ body{background:#071426;color:#f8f0df}
 .app-shell .portal-page .plan-detail,.app-shell .portal-page .steps-grid article{background:#10263a;border-color:#284457;color:#f8f0df}
 .app-shell footer{background:#050f1d;border-top:1px solid rgba(198,164,90,.3);color:#d7e0e5}
 @media(max-width:760px){.app-shell .brand-logo-small .dateme-logo-art{width:62px;height:56px}.app-shell .registration-page .auth-card{padding:24px 20px}}
+
+
+/* DateMe: force the requested deep navy theme across the entire site. */
+:root{color-scheme:dark;--ink:#f8f0df;--muted:#b8c7d4;--rose:#c8102e;--rose-dark:#a60d26;--blush:#10263a;--line:#294257;background:#061326}
+html,body,#root{min-height:100%;background:#061326;color:#f8f0df}
+.app-shell,.app-shell.theme-navy{--ink:#f8f0df;--muted:#b8c7d4;--rose:#c8102e;--rose-dark:#a60d26;--blush:#10263a;--line:#294257;background:#061326;color:#f8f0df}
+.app-shell .topbar,.app-shell footer{background:#050e1b;color:#f8f0df;border-color:rgba(198,164,90,.28)}
+.app-shell .top-links,.app-shell .hero-lede,.app-shell .section-heading p,.app-shell .person-bio,.app-shell .safety-banner p,.app-shell footer p{color:#b8c7d4}
+.app-shell .hero,.app-shell .registration-page{background:radial-gradient(ellipse at 15% 18%,rgba(20,67,91,.55),transparent 45%),radial-gradient(ellipse at 85% 72%,rgba(0,103,71,.20),transparent 42%),linear-gradient(135deg,#061326 0%,#0a1d32 55%,#071426 100%);color:#f8f0df}
+.app-shell .discover-section,.app-shell .how-section,.app-shell .safety-banner,.app-shell .membership-section{background:linear-gradient(145deg,#08182a,#0c2235 58%,#071426);color:#f8f0df;border-color:#294257}
+.app-shell .auth-card,.app-shell .person-card,.app-shell .match-list,.app-shell .chat-panel,.app-shell .profile-editor,.app-shell .empty-state,.app-shell .profile-setup,.app-shell .steps-grid article{background:#0d2236;color:#f8f0df;border-color:rgba(198,164,90,.35);box-shadow:0 18px 48px rgba(0,0,0,.22)}
+.app-shell .card-heading h2,.app-shell .person-info h3,.app-shell .steps-grid h3,.app-shell .safety-banner h2,.app-shell .membership-section h2,.app-shell .profile-setup h3,.app-shell .empty-state h3{color:#f8f0df}
+.app-shell .auth-form label,.app-shell .editor-fields label{color:#e6edf2}
+.app-shell .auth-form input,.app-shell .editor-fields input,.app-shell .editor-fields textarea,.app-shell .editor-fields select,.app-shell .chat-compose input{background:#07182a;color:#f8f0df;border-color:#365269}
+.app-shell .auth-form input::placeholder,.app-shell .editor-fields input::placeholder,.app-shell .chat-compose input::placeholder{color:#8fa4b5}
+.app-shell .auth-switch{background:#07182a}
+.app-shell .auth-switch button{color:#b8c7d4}
+.app-shell .auth-switch button.active{background:#17344b;color:#f8f0df}
+.app-shell .button-primary{background:linear-gradient(110deg,#c8102e,#9f1029);color:#fff8ed;box-shadow:0 8px 22px rgba(200,16,46,.22)}
+.app-shell .button-outline,.app-shell .portal-page-actions button,.app-shell .member-tabs button{background:#10263a;color:#f8f0df;border-color:#365269}
+.app-shell .member-tabs button.selected{background:#153b35;border-color:#087a56;color:#d7f5e5}
+.app-shell .person-photo-wrap,.app-shell .photo-placeholder,.app-shell .editor-photo{background:linear-gradient(145deg,#102c42,#0c382f);color:#d6e5ed}
+.app-shell .person-city,.app-shell .person-city span{color:#b8c7d4}
+.app-shell .say-hello{background:#112c40;color:#f8e8ce;border-color:#8f7442}
+.app-shell .like-button{background:#10263a;color:#f3d6db}
+.app-shell .like-button.liked{background:#c8102e;color:white}
+.app-shell .match-row{background:#0d2236;color:#f8f0df;border-color:#294257}
+.app-shell .match-row:hover,.app-shell .match-row.active{background:#17344b}
+.app-shell .chat-messages{background:#07182a}
+.app-shell .message-bubble{background:#18334a;color:#f8f0df}
+.app-shell .message-bubble.mine{background:#4b1828;color:#fff3e8}
+.app-shell .portal-menu{background:#0d2236;border-color:#365269}
+.app-shell .portal-menu a,.app-shell .portal-menu button{color:#f8f0df}
+.app-shell .portal-menu a:hover,.app-shell .portal-menu button:hover{background:#17344b;color:#f8f0df}
+.app-shell .plan-period,.app-shell .plan-detail{background:#0d2236;color:#f8f0df;border-color:#365269}
+.app-shell .plan-period.selected{background:#173b38;border-color:#087a56}
+.app-shell .notice{background:#3b1725;color:#ffdce2}
+.app-shell .setup-hint,.app-shell .empty-state{background:#0d2236;color:#d5e0e8}
+.app-shell .profile-prompt,.app-shell .interest-chips span{background:#102b3e;color:#e8f0f4;border-color:#365269}
+.app-shell .chat-tools-note,.app-shell .demo-caption,.app-shell .terms{color:#a9bac8}
+.app-shell .safety-symbol,.app-shell .step-icon,.app-shell .mini-heart{background:#15372f;color:#bde5cf}
+@media(max-width:680px){.app-shell .hero{padding-top:34px}.app-shell .registration-page .auth-card{background:#0d2236}}
