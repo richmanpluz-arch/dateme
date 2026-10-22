@@ -9,6 +9,11 @@ type Profile = {
   city: string | null;
   bio: string | null;
   photo_url: string | null;
+  interests?: string[];
+  prompt_question?: string | null;
+  prompt_answer?: string | null;
+  looking_for?: string | null;
+  languages?: string[];
 };
 type Match = { id: string; user_one: string; user_two: string; created_at: string };
 type Message = { id: string; match_id: string; sender_id: string; body: string; created_at: string; expires_at?: string; reply_to?: string | null; audio_path?: string | null };
@@ -70,6 +75,8 @@ export default function App() {
   const recorderChunksRef = useRef<BlobPart[]>([]);
   const [activeMatchId, setActiveMatchId] = useState('');
   const [tab, setTab] = useState<'discover' | 'likes' | 'matches' | 'profile'>('discover');
+  const [searchText, setSearchText] = useState('');
+  const [blockedIds, setBlockedIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (session?.user) setPage('discover');
@@ -102,11 +109,12 @@ export default function App() {
     let cancelled = false;
     async function loadMemberData() {
       const userId = session!.user.id;
-      const [own, people, sentLikes, matchRows] = await Promise.all([
-        supabase!.from('profiles').select('id, display_name, age, city, bio, photo_url').eq('id', userId).maybeSingle(),
-        supabase!.from('profiles').select('id, display_name, age, city, bio, photo_url').neq('id', userId).order('created_at', { ascending: false }).limit(60),
+      const [own, people, sentLikes, matchRows, blocks] = await Promise.all([
+        supabase!.from('profiles').select('id, display_name, age, city, bio, photo_url, interests, prompt_question, prompt_answer, looking_for, languages').eq('id', userId).maybeSingle(),
+        supabase!.from('profiles').select('id, display_name, age, city, bio, photo_url, interests, prompt_question, prompt_answer, looking_for, languages').neq('id', userId).order('created_at', { ascending: false }).limit(60),
         supabase!.from('likes').select('liked_user_id').eq('user_id', userId),
         supabase!.from('matches').select('id, user_one, user_two, created_at').or(`user_one.eq.${userId},user_two.eq.${userId}`).order('created_at', { ascending: false }),
+        supabase!.from('member_blocks').select('blocked_user_id').eq('blocker_id', userId),
       ]);
       if (cancelled) return;
       if (own.data) setMyProfile(own.data as Profile);
@@ -114,6 +122,7 @@ export default function App() {
       if (people.data) setProfiles(people.data as Profile[]);
       if (sentLikes.data) setLiked(sentLikes.data.map((row) => row.liked_user_id));
       if (matchRows.data) setMatches(matchRows.data as Match[]);
+      if (blocks.data) setBlockedIds(blocks.data.map((row) => row.blocked_user_id));
       if (own.error || people.error || sentLikes.error || matchRows.error) {
         setNotice('Some account data could not load. Check the Supabase policies and schema setup.');
       }
@@ -144,8 +153,8 @@ export default function App() {
   }, [session, activeMatchId]);
 
   const visibleProfiles = useMemo(
-    () => tab === 'likes' ? profiles.filter((profile) => liked.includes(profile.id)) : profiles,
-    [profiles, liked, tab],
+    () => (tab === 'likes' ? profiles.filter((profile) => liked.includes(profile.id)) : profiles).filter((profile) => !blockedIds.includes(profile.id) && (profile.display_name + ' ' + (profile.city || '') + ' ' + (profile.bio || '') + ' ' + (profile.interests || []).join(' ')).toLowerCase().includes(searchText.toLowerCase())),
+    [profiles, liked, tab, blockedIds, searchText],
   );
   const activeMatch = matches.find((match) => match.id === activeMatchId) || null;
 
@@ -224,6 +233,24 @@ export default function App() {
     setNotice(`You liked ${profile.display_name}. Fingers crossed!`);
   }
 
+  async function reportMember(profile: Profile) {
+    if (!supabase || !session) { setNotice('Sign in to report a profile.'); return; }
+    const reason = window.prompt('Why are you reporting this member? (fake profile, harassment, scam, inappropriate content, other)');
+    if (!reason?.trim()) return;
+    const details = window.prompt('Optional details for the safety team (do not include passwords or financial information):') || '';
+    const { error } = await supabase.from('member_reports').insert({ reporter_id: session.user.id, reported_user_id: profile.id, reason: reason.trim().slice(0, 120), details: details.trim().slice(0, 2000), status: 'open' });
+    setNotice(error ? 'Report could not be submitted. Please try again.' : 'Thank you. Your report has been sent for review.');
+  }
+
+  async function blockMember(profile: Profile) {
+    if (!supabase || !session) { setNotice('Sign in to block a member.'); return; }
+    if (!window.confirm('Block ' + profile.display_name + '? Their profile will be hidden from your discovery list.')) return;
+    const { error } = await supabase.from('member_blocks').upsert({ blocker_id: session.user.id, blocked_user_id: profile.id }, { onConflict: 'blocker_id,blocked_user_id', ignoreDuplicates: true });
+    if (error) { setNotice('Could not block this member. Please try again.'); return; }
+    setBlockedIds((current) => current.includes(profile.id) ? current : [...current, profile.id]);
+    setNotice(profile.display_name + ' has been blocked from your discovery list.');
+  }
+
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase || !session || !myProfile) return;
@@ -250,9 +277,14 @@ export default function App() {
       city: myProfile.city?.trim() || null,
       bio: myProfile.bio?.trim() || null,
       photo_url: photoUrl,
+      interests: myProfile.interests || [],
+      prompt_question: myProfile.prompt_question?.trim() || null,
+      prompt_answer: myProfile.prompt_answer?.trim() || null,
+      looking_for: myProfile.looking_for?.trim() || null,
+      languages: myProfile.languages || [],
       updated_at: new Date().toISOString(),
     };
-    const { data, error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' }).select('id, display_name, age, city, bio, photo_url').single();
+    const { data, error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' }).select('id, display_name, age, city, bio, photo_url, interests, prompt_question, prompt_answer, looking_for, languages').single();
     setBusy(false);
     if (error) { setNotice('Could not save your profile. Check that the database schema has been applied.'); return; }
     setMyProfile(data as Profile);
@@ -364,6 +396,7 @@ export default function App() {
 
         {page === 'discover' && <section className="discover-section" id="discover">
           <div className="section-heading"><div><span className="eyebrow">GOOD PEOPLE, REAL POSSIBILITIES</span><h2>{session ? tab === 'matches' ? 'Your connections' : tab === 'profile' ? 'Your story, your way' : 'People you might like' : 'A little closer to your person'}</h2><p>Start with a smile. See where a conversation takes you.</p></div><span className="section-flower" aria-hidden="true">✳</span></div>
+          {session && <div className="discover-search"><span>⌕</span><input aria-label="Search members" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search by name, city or interests…" /><button type="button" onClick={() => setSearchText('')}>Clear</button></div>}
           {session && <div className="member-bar"><span>Signed in as <strong>{session.user.email}</strong></span><div className="member-tabs">
             <button className={tab === 'discover' ? 'selected' : ''} onClick={() => { setTab('discover'); setActiveMatchId(''); }}>Discover</button>
             <button className={tab === 'likes' ? 'selected' : ''} onClick={() => { setTab('likes'); setActiveMatchId(''); }}>Likes ({liked.length})</button>
@@ -379,6 +412,11 @@ export default function App() {
               <label>City<input maxLength={100} value={myProfile.city || ''} onChange={(e) => setMyProfile({ ...myProfile, city: e.target.value })} placeholder="e.g. Johannesburg" /></label>
               <label>Photo URL<input type="url" value={myProfile.photo_url || ''} onChange={(e) => setMyProfile({ ...myProfile, photo_url: e.target.value })} placeholder="https://…" /></label>
               <label className="editor-bio">About you<textarea maxLength={500} rows={4} value={myProfile.bio || ''} onChange={(e) => setMyProfile({ ...myProfile, bio: e.target.value })} placeholder="What do you love? What makes you, you?" /><span>{(myProfile.bio || '').length}/500</span></label>
+              <label>What are you looking for?<select value={myProfile.looking_for || ''} onChange={(e) => setMyProfile({ ...myProfile, looking_for: e.target.value })}><option value="">Choose what feels right</option><option>Long-term relationship</option><option>Dating and seeing where it goes</option><option>Friendship first</option><option>Marriage-minded</option><option>Not sure yet</option></select></label>
+              <label>Interests <input value={(myProfile.interests || []).join(', ')} onChange={(e) => setMyProfile({ ...myProfile, interests: e.target.value.split(',').map((v) => v.trim()).filter(Boolean).slice(0, 12) })} placeholder="Music, hiking, cooking (comma separated)" /></label>
+              <label>Languages <input value={(myProfile.languages || []).join(', ')} onChange={(e) => setMyProfile({ ...myProfile, languages: e.target.value.split(',').map((v) => v.trim()).filter(Boolean).slice(0, 8) })} placeholder="English, isiZulu, Afrikaans…" /></label>
+              <label>Profile prompt question<input maxLength={160} value={myProfile.prompt_question || ''} onChange={(e) => setMyProfile({ ...myProfile, prompt_question: e.target.value })} placeholder="A perfect Sunday looks like…" /></label>
+              <label>Prompt answer<textarea maxLength={300} rows={2} value={myProfile.prompt_answer || ''} onChange={(e) => setMyProfile({ ...myProfile, prompt_answer: e.target.value })} placeholder="Give someone an easy conversation starter" /></label>
               <button className="button button-primary" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save my profile'}</button>
             </div>
           </form>}
@@ -403,7 +441,7 @@ export default function App() {
           {(tab === 'discover' || tab === 'likes' || !session) && (visibleProfiles.length ? <div className="profile-grid">
             {visibleProfiles.map((profile, index) => <article className="person-card" key={profile.id}>
               <div className="person-photo-wrap">{profile.photo_url ? <img className="person-photo" src={profile.photo_url} alt={`${profile.display_name}'s profile`} loading="lazy" /> : <div className="photo-placeholder">♡</div>}<span className="profile-number">{String(index + 1).padStart(2, '0')}</span><button className={liked.includes(profile.id) ? 'like-button liked' : 'like-button'} onClick={() => void handleLike(profile)} aria-label={`Like ${profile.display_name}`}>{liked.includes(profile.id) ? '♥' : '♡'}</button></div>
-              <div className="person-info"><h3>{profile.display_name}{profile.age ? <span>, {profile.age}</span> : null}</h3><p className="person-city"><span>⌖</span> {profile.city || 'Location not set'}</p><p className="person-bio">{profile.bio || 'A little mystery makes the first hello more fun.'}</p><button className="say-hello" onClick={() => void handleLike(profile)}>{liked.includes(profile.id) ? 'Liked' : 'Say hello'} <span>↗</span></button></div>
+              <div className="person-info"><h3>{profile.display_name}{profile.age ? <span>, {profile.age}</span> : null}</h3><p className="person-city"><span>⌖</span> {profile.city || 'Location not set'}</p><p className="person-bio">{profile.bio || 'A little mystery makes the first hello more fun.'}</p>{profile.prompt_question && <div className="profile-prompt"><small>{profile.prompt_question}</small><p>{profile.prompt_answer}</p></div>}{profile.interests?.length ? <div className="interest-chips">{profile.interests.slice(0,5).map((interest) => <span key={interest}>{interest}</span>)}</div> : null}{profile.looking_for && <p className="looking-for">♡ {profile.looking_for}</p>}<button className="say-hello" onClick={() => void handleLike(profile)}>{liked.includes(profile.id) ? 'Liked' : 'Say hello'} <span>↗</span></button>{session && <div className="profile-safety-actions"><button onClick={() => void reportMember(profile)}>Report</button><button onClick={() => void blockMember(profile)}>Block</button></div>}</div>
             </article>)}
           </div> : <div className="empty-state"><span>♡</span><h3>{tab === 'likes' ? 'No likes here yet' : 'No profiles yet'}</h3><p>{tab === 'likes' ? 'Explore people and tap the heart on someone who catches your eye.' : 'New member profiles will show up here as people join DateMe.'}</p><button className="button button-primary" onClick={() => setTab('discover')}>Back to discover</button></div>)}
           {!session && <p className="demo-caption">Demo profiles are examples only, not real members. Create an account to start your own journey.</p>}
