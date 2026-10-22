@@ -6,7 +6,7 @@ A mobile-friendly dating app built with React, TypeScript, Vite and Supabase, wi
 
 - Responsive landing page and email/password registration and login
 - Session persistence and sign-out through Supabase Auth
-- Profile editor for display name, age (18+), city, bio and a profile photo URL
+- Profile editor for display name, age (18+), city, bio and secure profile photo uploads (JPG, PNG or WebP up to 5 MB)
 - Profile discovery and likes saved in Supabase
 - Automatic mutual-like matching through a database trigger
 - Match list and private chat UI with realtime message updates
@@ -37,7 +37,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
 
 The key used in a browser app must be a public publishable key (or legacy anon key). **Never use a service-role or secret key in client code, GitHub, or any `VITE_*` variable.**
 
-The schema is in `supabase/schema.sql`. It has been applied to the connected Supabase project, including the mutual-like trigger and realtime message publication setup. If setting up a different project, run that SQL in its SQL Editor.
+The schema is in `supabase/schema.sql`. It has been applied to the connected Supabase project, including the mutual-like trigger, realtime message publication, and `dateme-avatars` storage bucket with per-member upload policies. If setting up a different project, run that SQL in its SQL Editor.
 
 ## Build checks
 
