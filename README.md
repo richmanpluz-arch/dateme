@@ -4,7 +4,7 @@ A mobile-friendly dating app built with React, TypeScript, Vite and Supabase, wi
 
 ## Current features
 
-- Responsive landing page and email/password registration and login
+- Responsive landing page and email/password registration and login, with adult-only sign-up (18+)
 - Session persistence and sign-out through Supabase Auth
 - Profile editor for display name, age (18+), city, bio and secure profile photo uploads (JPG, PNG or WebP up to 5 MB)
 - Profile discovery and likes saved in Supabase
