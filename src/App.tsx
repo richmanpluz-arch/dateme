@@ -11,7 +11,7 @@ type Profile = {
   photo_url: string | null;
 };
 type Match = { id: string; user_one: string; user_two: string; created_at: string };
-type Message = { id: string; match_id: string; sender_id: string; body: string; created_at: string };
+type Message = { id: string; match_id: string; sender_id: string; body: string; created_at: string; expires_at?: string; reply_to?: string | null; audio_path?: string | null };
 
 const demoProfiles: Profile[] = [
   { id: 'demo-1', display_name: 'Amara', age: 26, city: 'Johannesburg', bio: 'Sunday markets, spontaneous road trips and finding the best coffee in town.', photo_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=85' },
@@ -59,6 +59,14 @@ export default function App() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState('');
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordingBusy, setRecordingBusy] = useState(false);
+  const [voicePreview, setVoicePreview] = useState<string | null>(null);
+  const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
+  const recorderRef = { current: null as MediaRecorder | null };
+  const recorderChunksRef = { current: [] as BlobPart[] };
   const [activeMatchId, setActiveMatchId] = useState('');
   const [tab, setTab] = useState<'discover' | 'likes' | 'matches' | 'profile'>('discover');
 
@@ -117,7 +125,9 @@ export default function App() {
     if (!supabase || !session || !activeMatchId) { setMessages([]); return; }
     let cancelled = false;
     async function loadMessages() {
-      const { data, error } = await supabase!.from('messages').select('id, match_id, sender_id, body, created_at').eq('match_id', activeMatchId).order('created_at', { ascending: true }).limit(200);
+      const { data, error } = await supabase!.from('messages').select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').eq('match_id', activeMatchId).order('created_at', { ascending: true }).limit(200);
+      // Expired messages are removed whenever a conversation is opened/refreshed.
+      await supabase!.from('messages').delete().eq('match_id', activeMatchId).lt('expires_at', new Date().toISOString());
       if (cancelled) return;
       if (error) setNotice('Could not load this conversation.');
       else setMessages((data || []) as Message[]);
@@ -126,6 +136,7 @@ export default function App() {
     const channel = supabase!.channel(`messages-${activeMatchId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${activeMatchId}` }, (payload) => {
         const next = payload.new as Message;
+        if (next.expires_at && new Date(next.expires_at).getTime() <= Date.now()) return;
         setMessages((current) => current.some((item) => item.id === next.id) ? current : [...current, next]);
       }).subscribe();
     return () => { cancelled = true; void supabase!.removeChannel(channel); };
@@ -238,10 +249,45 @@ export default function App() {
     event.preventDefault();
     const body = messageText.trim();
     if (!supabase || !session || !activeMatchId || !body || body.length > 2000) return;
-    const { data, error } = await supabase.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body }).select('id, match_id, sender_id, body, created_at').single();
+    const { data, error } = await supabase.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
     if (error) { setNotice('Message could not be sent. Messaging is only available to matched members.'); return; }
     if (data) setMessages((current) => current.some((item) => item.id === data.id) ? current : [...current, data as Message]);
-    setMessageText('');
+    setMessageText(''); setReplyTo(null); setShowEmojiPicker(false);
+  }
+
+  async function startVoiceRecording() {
+    if (!navigator.mediaDevices?.getUserMedia || !('MediaRecorder' in window)) { setNotice('Voice recording is not supported in this browser. Try an updated browser with microphone permission.'); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recorderChunksRef.current = [];
+      recorder.ondataavailable = (event) => { if (event.data.size) recorderChunksRef.current.push(event.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(recorderChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        setVoiceBlob(blob); setVoicePreview(URL.createObjectURL(blob));
+        stream.getTracks().forEach((track) => track.stop());
+        setRecording(false); setRecordingBusy(false);
+      };
+      recorder.start(); setRecording(true); setNotice('Recording voice note… tap Stop when you are done.');
+    } catch { setNotice('Microphone access was blocked. Allow microphone access in your browser settings and try again.'); }
+  }
+
+  function stopVoiceRecording() {
+    if (recorderRef.current?.state === 'recording') { setRecordingBusy(true); recorderRef.current.stop(); }
+  }
+
+  async function sendVoiceNote() {
+    if (!supabase || !session || !activeMatchId || !voiceBlob) return;
+    setRecordingBusy(true);
+    const path = `${activeMatchId}/${session.user.id}/${crypto.randomUUID()}.webm`;
+    const { error: uploadError } = await supabase.storage.from('dateme-voice-notes').upload(path, voiceBlob, { contentType: voiceBlob.type || 'audio/webm', upsert: false });
+    if (uploadError) { setNotice('Voice note upload is not ready yet. Please check the voice-note storage bucket setup.'); setRecordingBusy(false); return; }
+    const { data, error } = await supabase.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body: '🎙️ Voice note', audio_path: path, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
+    if (error) setNotice('Could not send the voice note.');
+    else if (data) setMessages((current) => current.some((item) => item.id === data.id) ? current : [...current, data as Message]);
+    if (voicePreview) URL.revokeObjectURL(voicePreview);
+    setVoicePreview(null); setVoiceBlob(null); setReplyTo(null); setRecordingBusy(false);
   }
 
   function openChat(match: Match) {
@@ -329,8 +375,12 @@ export default function App() {
             })}</aside>
             <section className="chat-panel">{activeMatch ? <>
               <div className="chat-heading"><span className="match-avatar">{activePerson?.photo_url ? <img src={activePerson.photo_url} alt="" /> : '♡'}</span><div><strong>{activePerson?.display_name || 'Your match'}</strong><small>Only you and your match can see this chat</small></div></div>
-              <div className="chat-messages">{messages.length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.map((message) => <div key={message.id} className={message.sender_id === session.user.id ? 'message-bubble mine' : 'message-bubble'}><p>{message.body}</p><time>{new Date(message.created_at).toLocaleString()}</time></div>)}</div>
-              <form className="chat-compose" onSubmit={sendMessage}><input value={messageText} onChange={(e) => setMessageText(e.target.value)} maxLength={2000} placeholder="Write a kind message…" aria-label="Message" required /><button className="button button-primary" type="submit" disabled={!messageText.trim()}>Send ↗</button></form>
+              <div className="chat-tools-note">🔒 Private chat · messages expire after 24 hours</div>
+              <div className="chat-messages">{messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).map((message) => <div key={message.id} className={message.sender_id === session.user.id ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" title="Reply to message" aria-label="Reply to message" onClick={() => { setReplyTo(message); setMessageText(''); }}>↶ Reply</button><button type="button" title="Copy message" aria-label="Copy message" onClick={() => { void navigator.clipboard?.writeText(message.body).then(() => setNotice('Message copied.')).catch(() => setNotice('Copy was blocked by your browser.')); }}>Copy</button><button type="button" title="Translate message" aria-label="Translate message" onClick={() => window.open('https://translate.google.com/?sl=auto&tl=en&text=' + encodeURIComponent(message.body) + '&op=translate', '_blank', 'noopener,noreferrer')}>Translate</button></div>{message.reply_to && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio controls preload="none" src={supabase.storage.from('dateme-voice-notes').getPublicUrl(message.audio_path).data.publicUrl} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · disappears in 24h</time></div>)}</div>
+              {replyTo && <div className="reply-composer"><span>↶ Replying to: {replyTo.body.slice(0, 90)}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
+              {voicePreview && <div className="voice-preview"><audio controls src={voicePreview} /><button type="button" onClick={() => { URL.revokeObjectURL(voicePreview); setVoicePreview(null); setVoiceBlob(null); }}>Discard</button><button type="button" onClick={() => void sendVoiceNote()} disabled={recordingBusy}>Send voice note</button></div>}
+              {showEmojiPicker && <div className="emoji-picker" aria-label="Emoji picker">{['😀','😂','🥰','😍','😘','😊','😉','❤️','💕','💖','🔥','👏','👍','🙏','🌹','✨','😢','😅','🤗','💋'].map((emoji) => <button type="button" key={emoji} onClick={() => setMessageText((text) => text + emoji)}>{emoji}</button>)}</div>}
+              <form className="chat-compose" onSubmit={sendMessage}><button type="button" className="chat-tool-button" aria-label="Choose emoji" title="Emoji" onClick={() => setShowEmojiPicker((show) => !show)}>☺</button><input value={messageText} onChange={(e) => setMessageText(e.target.value)} maxLength={2000} placeholder={replyTo ? 'Write a reply…' : 'Write a kind message…'} aria-label="Message" /><button type="button" className="chat-tool-button" aria-label={recording ? 'Stop recording' : 'Record voice note'} title={recording ? 'Stop recording' : 'Record voice note'} onClick={recording ? stopVoiceRecording : () => void startVoiceRecording()} disabled={recordingBusy}>{recording ? '■' : '🎙'}</button><button className="button button-primary" type="submit" disabled={!messageText.trim()}>Send ↗</button></form>
             </> : <div className="chat-placeholder"><span>♡</span><h3>A little hello goes a long way.</h3><p>Choose a match to start your conversation.</p></div>}</section>
           </div>}
 
