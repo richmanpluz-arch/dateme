@@ -90,12 +90,12 @@ export default function App() {
       else setMessages((data || []) as Message[]);
     }
     void loadMessages();
-    const channel = supabase.channel(`messages-${activeMatchId}`)
+    const channel = supabase!.channel(`messages-${activeMatchId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${activeMatchId}` }, (payload) => {
         const next = payload.new as Message;
         setMessages((current) => current.some((item) => item.id === next.id) ? current : [...current, next]);
       }).subscribe();
-    return () => { cancelled = true; void supabase.removeChannel(channel); };
+    return () => { cancelled = true; void supabase!.removeChannel(channel); };
   }, [session, activeMatchId]);
 
   const visibleProfiles = useMemo(
