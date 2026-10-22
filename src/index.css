@@ -107,3 +107,11 @@
 .app-shell.theme-green .registration-page{background:linear-gradient(135deg,#edf7f1,#d9eee2)!important}
 .app-shell.theme-rose .registration-page{background:linear-gradient(135deg,#fff8f6,#fbe4e6)!important}
 @media(max-width:820px){.app-shell .registration-page{grid-template-columns:1fr;gap:20px;padding:25px 18px 40px}.app-shell .registration-page .hero-copy{text-align:center;margin:0 auto}.app-shell .registration-page .hero-lede{margin-left:auto;margin-right:auto}.app-shell .registration-page .hero-points{justify-content:center;flex-wrap:wrap}.app-shell .registration-page .hero-art{display:none}.app-shell .registration-page .auth-card{max-width:500px}}
+
+
+/* Portal navigation controls */
+.app-shell .top-links button{appearance:none;border:0;background:transparent;color:var(--brand-deep);font:inherit;font-weight:650;padding:9px 11px;border-radius:9px;cursor:pointer}
+.app-shell .top-links button:hover{background:var(--blush);color:var(--brand-primary)}
+.app-shell .logo-home-button{display:flex;align-items:center;justify-content:center;border:0;padding:0;cursor:pointer;flex-shrink:0}
+.app-shell .portal-page{width:100%;box-sizing:border-box}
+@media(max-width:680px){.app-shell .top-links{gap:2px}.app-shell .top-links button{font-size:.82rem;padding:8px 6px}}
