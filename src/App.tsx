@@ -180,8 +180,15 @@ export default function App() {
     setBusy(true);
     try {
       if (mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { data: { display_name: displayName.trim(), age: Number(signupAge) } } });
+        const age = Number(signupAge);
+        if (!Number.isInteger(age) || age < 18 || age > 120) throw new Error('DateMe is for adults aged 18 and over. Please enter a valid age.');
+        if (displayName.trim().length < 2) throw new Error('Please enter a name with at least 2 characters.');
+        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { data: { display_name: displayName.trim(), age } } });
         if (error) throw error;
+        if (data.user) {
+          const { error: profileError } = await supabase.from('profiles').upsert({ id: data.user.id, display_name: displayName.trim(), age, city: null, bio: null, photo_url: null }, { onConflict: 'id', ignoreDuplicates: true });
+          if (profileError) setNotice('Your account was created, but your profile needs finishing in My profile.');
+        }
         if (data.session) setNotice('Welcome to DateMe! Your account is ready.');
         else { setNotice('Check your email for a confirmation link, then come back to sign in.'); setMode('signin'); }
       } else {
@@ -378,8 +385,8 @@ export default function App() {
           <button className="brand-logo brand-logo-small logo-home-button" onClick={() => { setPage(session ? "discover" : "register"); setMenuOpen(false); window.scrollTo(0,0); }} aria-label="DateMe home"><DateMeLogo /></button>
           <button className="portal-toggle" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><span></span><span></span><span></span></button>
           {menuOpen && <nav className="portal-menu" aria-label="DateMe portals">
-            <button onClick={() => { setPage('register'); setMenuOpen(false); window.scrollTo({top:0,behavior:'smooth'}); }}>Main page</button>
-            <button onClick={() => { setPage('discover'); setMenuOpen(false); window.scrollTo(0,0); }}>Discover / member portal</button>
+            <button onClick={() => { setPage(session ? 'discover' : 'register'); setMenuOpen(false); window.scrollTo({top:0,behavior:'smooth'}); }}>Main page</button>
+            <button onClick={() => { setPage(session ? 'discover' : 'register'); setMenuOpen(false); window.scrollTo(0,0); }}>Discover / member portal</button>
             <button onClick={() => { setPage('plans'); setMenuOpen(false); window.scrollTo(0,0); }}>Subscription plans</button>
             <button onClick={() => { setPage('how'); setMenuOpen(false); window.scrollTo(0,0); }}>How DateMe works</button>
             <button onClick={() => { setPage('safety'); setMenuOpen(false); window.scrollTo(0,0); }}>Safety centre</button>
@@ -389,7 +396,7 @@ export default function App() {
           </nav>}
         </div>
         <nav className="top-links" aria-label="Main navigation"><button onClick={() => { setPage("how"); setMenuOpen(false); window.scrollTo(0,0); }}>How it works</button><button onClick={() => { setPage("safety"); setMenuOpen(false); window.scrollTo(0,0); }}>Your safety</button>{session && <button onClick={() => { setPage("plans"); setMenuOpen(false); window.scrollTo(0,0); }}>Membership</button>}</nav>
-        {session ? <button className="button button-outline top-action" onClick={() => void handleSignOut()}>Sign out</button> : <button className="button button-outline top-action" onClick={() => { setPage('register'); setMode('signin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Log in</button>}
+        {session ? <button className="button button-outline top-action" onClick={() => void handleSignOut()}>Sign out</button> : <button className="button button-outline top-action" onClick={() => { setPage(session ? 'discover' : 'register'); setMode('signin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Log in</button>}
       </header>
       <main>
         {page === 'register' && !session && <section className="hero registration-page">
