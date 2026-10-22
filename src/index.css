@@ -80,3 +80,30 @@
 .app-shell.theme-rose{--brand-primary:#c8102e;--brand-deep:#071b31;--brand-accent:#006747;--page-bg:#fff8f6;--surface:#fff;--text-main:#29212a;--text-muted:#716773;--border-color:#ead9d8;--rose:#c8102e;--rose-dark:#870d25;--blush:#fde8e9;--line:#ead9d8}
 .app-shell .brand-logo,.app-shell .registration-logo{background:transparent!important}
 @media(max-width:680px){.app-shell .brand-logo-small{width:72px;height:66px}.app-shell .registration-logo{width:min(100%,230px)}}
+
+/* DateMe signature look: crimson, midnight navy and emerald; registration is the first screen. */
+.app-shell{background:var(--page-bg)!important}
+.app-shell .topbar{position:sticky;top:0;z-index:40;background:var(--surface)!important;box-shadow:0 4px 20px rgba(7,27,49,.07);padding-top:10px;padding-bottom:10px}
+.app-shell .registration-page{min-height:calc(100vh - 94px);display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,440px);align-items:center;gap:clamp(24px,5vw,76px);padding:clamp(26px,5vw,72px) clamp(20px,7vw,100px);background:linear-gradient(135deg,var(--page-bg) 0%,var(--blush) 100%)!important}
+.app-shell .registration-page .hero-copy{max-width:650px}
+.app-shell .registration-page .hero-copy h1{font-size:clamp(2.7rem,5.5vw,5.3rem);line-height:1.02;letter-spacing:-.045em;color:var(--brand-deep)}
+.app-shell .registration-page .hero-copy h1 span{color:var(--brand-primary)}
+.app-shell .registration-page .hero-lede{font-size:1.08rem;line-height:1.8;max-width:510px}
+.app-shell .registration-page .hero-art{margin-top:28px;max-width:490px}
+.app-shell .registration-page .auth-card{width:100%;max-width:440px;margin:0 auto;background:var(--surface)!important;border:1px solid var(--border-color);border-top:5px solid var(--brand-primary);border-radius:25px;box-shadow:0 24px 70px rgba(7,27,49,.12);padding:clamp(20px,3vw,34px)}
+.app-shell .registration-page .registration-logo{width:min(100%,300px);margin:0 auto 10px}
+.app-shell .registration-page .card-heading{text-align:center}
+.app-shell .registration-page .auth-switch{background:var(--page-bg);border:1px solid var(--border-color);border-radius:13px;padding:4px}
+.app-shell .registration-page .auth-switch button.active{background:var(--brand-deep);color:#fff;border-radius:10px}
+.app-shell .registration-page .button-primary{background:linear-gradient(100deg,var(--brand-primary),var(--brand-deep));border:0;border-radius:12px;box-shadow:0 8px 20px color-mix(in srgb,var(--brand-primary) 24%,transparent)}
+.app-shell .brand-logo-small{width:86px;height:75px}
+.app-shell .portal-toggle{border:1px solid var(--brand-deep);border-radius:11px}
+.app-shell .portal-menu{border-top:3px solid var(--brand-primary);box-shadow:0 18px 50px rgba(7,27,49,.16)}
+.app-shell .portal-menu button:focus-visible,.app-shell button:focus-visible,.app-shell a:focus-visible{outline:3px solid var(--brand-accent);outline-offset:2px}
+.app-shell .membership-section,.app-shell .portal-page{min-height:calc(100vh - 95px)}
+.app-shell .plan-period.selected{background:var(--brand-deep)!important;color:#fff!important;border-color:var(--brand-deep)!important}
+.app-shell .plan-period.selected small{color:#eaf2f8}
+.app-shell.theme-navy .registration-page{background:linear-gradient(135deg,#eaf2f8,#d4e5f2)!important}
+.app-shell.theme-green .registration-page{background:linear-gradient(135deg,#edf7f1,#d9eee2)!important}
+.app-shell.theme-rose .registration-page{background:linear-gradient(135deg,#fff8f6,#fbe4e6)!important}
+@media(max-width:820px){.app-shell .registration-page{grid-template-columns:1fr;gap:20px;padding:25px 18px 40px}.app-shell .registration-page .hero-copy{text-align:center;margin:0 auto}.app-shell .registration-page .hero-lede{margin-left:auto;margin-right:auto}.app-shell .registration-page .hero-points{justify-content:center;flex-wrap:wrap}.app-shell .registration-page .hero-art{display:none}.app-shell .registration-page .auth-card{max-width:500px}}
