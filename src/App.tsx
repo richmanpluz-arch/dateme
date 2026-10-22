@@ -145,13 +145,21 @@ export default function App() {
     );
     if (error) { setNotice('Could not save that like. Please try again.'); return; }
     setLiked((current) => current.includes(profile.id) ? current : [...current, profile.id]);
-    const { data: reciprocal } = await supabase.from('likes').select('id').eq('user_id', profile.id).eq('liked_user_id', session.user.id).maybeSingle();
-    if (reciprocal) {
-      const { data: newMatches } = await supabase.from('matches').select('id, user_one, user_two, created_at').or(`user_one.eq.${session.user.id},user_two.eq.${session.user.id}`).order('created_at', { ascending: false });
-      if (newMatches) setMatches(newMatches as Match[]);
-      setTab('matches');
-      setNotice(`It's a mutual like with ${profile.display_name}! You matched.`);
-    } else setNotice(`You liked ${profile.display_name}. Fingers crossed!`);
+    // The database trigger creates a match on a mutual like. Check matches rather
+    // than querying another member's likes, which RLS correctly keeps private.
+    const { data: newMatches } = await supabase.from('matches').select('id, user_one, user_two, created_at').or(`user_one.eq.${session.user.id},user_two.eq.${session.user.id}`).order('created_at', { ascending: false });
+    if (newMatches) {
+      setMatches(newMatches as Match[]);
+      const matched = newMatches.some((match) => match.user_one === profile.id || match.user_two === profile.id);
+      if (matched) {
+        const match = newMatches.find((item) => item.user_one === profile.id || item.user_two === profile.id);
+        if (match) setActiveMatchId(match.id);
+        setTab('matches');
+        setNotice(`It's a mutual like with ${profile.display_name}! You matched.`);
+        return;
+      }
+    }
+    setNotice(`You liked ${profile.display_name}. Fingers crossed!`);
   }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
