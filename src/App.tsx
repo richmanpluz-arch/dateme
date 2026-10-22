@@ -77,6 +77,8 @@ export default function App() {
   const [tab, setTab] = useState<'discover' | 'likes' | 'matches' | 'profile'>('discover');
   const [searchText, setSearchText] = useState('');
   const [blockedIds, setBlockedIds] = useState<string[]>([]);
+  const [adminReports, setAdminReports] = useState<Array<{ id: string; reporter_id: string; reported_user_id: string; reason: string; details: string | null; status: string; created_at: string }>>([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
 
   useEffect(() => {
     if (session?.user) setPage('discover');
@@ -88,6 +90,28 @@ export default function App() {
     supabase.from('admin_users').select('user_id').eq('user_id', session.user.id).maybeSingle()
       .then(({ data }) => setIsAdmin(Boolean(data)));
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!supabase || !session?.user || !isAdmin || page !== 'admin') return;
+    let cancelled = false;
+    setReportsLoading(true);
+    supabase.from('member_reports').select('id, reporter_id, reported_user_id, reason, details, status, created_at').order('created_at', { ascending: false }).limit(100)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) setNotice('Could not load reports. Please check administrator policies.');
+        else setAdminReports((data || []) as typeof adminReports);
+        setReportsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [session?.user?.id, isAdmin, page]);
+
+  async function updateReportStatus(reportId: string, status: 'reviewing' | 'resolved' | 'dismissed') {
+    if (!supabase || !session || !isAdmin) return;
+    const { error } = await supabase.from('member_reports').update({ status }).eq('id', reportId);
+    if (error) { setNotice('Could not update this report.'); return; }
+    setAdminReports(current => current.map(report => report.id === reportId ? { ...report, status } : report));
+    setNotice('Report marked ' + status + '.');
+  }
 
   useEffect(() => {
     if (!supabase) { setCheckingSession(false); return; }
@@ -478,7 +502,7 @@ export default function App() {
         </section>}
 
         {page === 'plans' && <section className="portal-page membership-section" id="membership-plans"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">YOUR JOURNEY, YOUR PACE</span><h2>Membership <span>plans.</span></h2><p>Choose a period to review its draft price and proposed benefits. Amounts and benefits are placeholders until we agree on the final offering.</p><div className="plan-periods">{[{id:'week',label:'Per Week',period:'7 days'},{id:'month',label:'Per Month',period:'1 month'},{id:'quarter',label:'3 Months',period:'3 months'},{id:'half',label:'6 Months',period:'6 months'},{id:'year',label:'1 Year',period:'12 months'}].map(plan => <button key={plan.id} className={selectedPlan===plan.id?'plan-period selected':'plan-period'} onClick={() => setSelectedPlan(plan.id)}>{plan.label}<small>{plan.period}</small></button>)}</div><div className="plan-detail"><span className="draft-label">DRAFT · NOT FOR SALE</span><h3>{{week:'Per Week · 7 days',month:'Per Month',quarter:'3 Months',half:'6 Months',year:'1 Year · 12 months'}[selectedPlan]}</h3><div className="draft-price">Price: <strong>To be decided</strong></div><h4>Proposed benefits to discuss</h4><ul><li>Create and edit your dating profile</li><li>Discover member profiles and send likes</li><li>Match and chat features, subject to account access and availability</li><li>Report and block inappropriate behaviour</li>{selectedPlan!=='week' && <li>Longer access period with no weekly renewal</li>}{selectedPlan==='year' && <li>Potential best-value annual option (price to be agreed)</li>}</ul><p>Payments are not enabled. No subscription can be purchased from this page yet.</p></div></section>}
-        {page === 'admin' && <section className="portal-page membership-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">OWNER ACCESS</span><h2>Administrator <span>portal.</span></h2>{isAdmin ? <div className="plan-detail"><h3>Admin access verified</h3><p>Signed in as {session?.user.email}. The secure admin area is reserved for accounts granted access in the database.</p><p>Management tools are not yet connected.</p></div> : <div className="plan-detail"><h3>Restricted access</h3><p>Your account has not been granted administrator privileges. For security, admin access cannot be self-assigned from this public page.</p><p>We can set up your owner account through a secure, private admin grant after you confirm the account email you want to use.</p></div>}</section>}
+        {page === 'admin' && <section className="portal-page membership-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">OWNER ACCESS</span><h2>Administrator <span>portal.</span></h2>{isAdmin ? <div className="plan-detail"><h3>Admin access verified</h3><p>Signed in as {session?.user.email}. The secure admin area is reserved for accounts granted access in the database.</p><p>Review member safety reports and update their status below. Member access and account suspension controls are not enabled yet.</p><div className="admin-report-list"><h3>Member safety reports</h3>{reportsLoading ? <p>Loading reports…</p> : adminReports.length === 0 ? <p>No reports have been submitted.</p> : adminReports.map(report => <article className="admin-report" key={report.id}><div className="admin-report-heading"><strong>{report.reason || 'Member report'}</strong><span className={'report-status status-' + report.status}>{report.status}</span></div><p>{report.details || 'No extra details provided.'}</p><small>Reported member: {report.reported_user_id} · Submitted: {new Date(report.created_at).toLocaleString()}</small><div className="admin-report-actions"><button onClick={() => void updateReportStatus(report.id, 'reviewing')}>Mark reviewing</button><button onClick={() => void updateReportStatus(report.id, 'resolved')}>Resolve</button><button onClick={() => void updateReportStatus(report.id, 'dismissed')}>Dismiss</button></div></article>)}</div></div> : <div className="plan-detail"><h3>Restricted access</h3><p>Your account has not been granted administrator privileges. For security, admin access cannot be self-assigned from this public page.</p><p>We can set up your owner account through a secure, private admin grant after you confirm the account email you want to use.</p></div>}</section>}
         {page === 'how' && <section className="portal-page how-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">NOT COMPLICATED. JUST HUMAN.</span><h2>Good things start <span>simply.</span></h2><div className="steps-grid"><article><span className="step-num">01</span><h3>Show up as you</h3><p>Create a profile that feels like you.</p></article><article><span className="step-num">02</span><h3>Find your people</h3><p>Discover people you would like to know.</p></article><article><span className="step-num">03</span><h3>Make the first move</h3><p>A kind hello can start a conversation.</p></article></div></section>}
         {page === 'safety' && <section className="portal-page how-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">ALWAYS YOUR CHOICE</span><h2>Safety <span>centre.</span></h2><p>Protect your personal details, take your time getting to know people, and meet in public places. Report suspicious or abusive behaviour. Safety tools and moderation workflows will be expanded as the app develops.</p></section>}
 
