@@ -139,4 +139,47 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- Note: matches are not client-insertable. A server-side matching flow will be added next.
+
+
+-- Create a match automatically when two members like each other.
+create or replace function public.create_match_on_mutual_like()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if exists (
+    select 1 from public.likes l
+    where l.user_id = new.liked_user_id
+      and l.liked_user_id = new.user_id
+  ) then
+    insert into public.matches (user_one, user_two)
+    values (least(new.user_id, new.liked_user_id), greatest(new.user_id, new.liked_user_id))
+    on conflict (user_one, user_two) do nothing;
+  end if;
+  return new;
+end;
+$;
+
+revoke execute on function public.create_match_on_mutual_like() from public, anon, authenticated;
+
+drop trigger if exists on_mutual_like_created on public.likes;
+create trigger on_mutual_like_created
+  after insert on public.likes
+  for each row execute function public.create_match_on_mutual_like();
+
+-- Enable message insert events for live chat, without failing if already enabled.
+do $
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (
+       select 1 from pg_publication_tables
+       where pubname = 'supabase_realtime'
+         and schemaname = 'public'
+         and tablename = 'messages'
+     ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $;
+
