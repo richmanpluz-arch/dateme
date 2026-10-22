@@ -29,6 +29,10 @@ export default function App() {
   const [checkingSession, setCheckingSession] = useState(Boolean(supabase));
   const [mode, setMode] = useState<'signin' | 'signup'>('signup');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [page, setPage] = useState<'home' | 'discover' | 'plans' | 'how' | 'safety' | 'admin'>('home');
+  const [selectedPlan, setSelectedPlan] = useState('week');
+  const [theme, setTheme] = useState<'rose' | 'navy' | 'green'>('rose');
+  const [isAdmin, setIsAdmin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -44,6 +48,12 @@ export default function App() {
   const [messageText, setMessageText] = useState('');
   const [activeMatchId, setActiveMatchId] = useState('');
   const [tab, setTab] = useState<'discover' | 'likes' | 'matches' | 'profile'>('discover');
+
+  useEffect(() => {
+    if (!supabase || !session?.user) { setIsAdmin(false); return; }
+    supabase.from('admin_users').select('user_id').eq('user_id', session.user.id).maybeSingle()
+      .then(({ data }) => setIsAdmin(Boolean(data)));
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!supabase) { setCheckingSession(false); return; }
@@ -228,24 +238,27 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell theme-${theme}`}>
       <header className="topbar">
         <div className="brand-menu-wrap">
           <a className="brand-logo brand-logo-small" href="#" aria-label="DateMe home"><DateMeLogo /></a>
           <button className="portal-toggle" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><span></span><span></span><span></span></button>
           {menuOpen && <nav className="portal-menu" aria-label="DateMe portals">
-            <a href={session ? '#discover' : '#join'} onClick={() => setMenuOpen(false)}>{session ? 'Discover people' : 'Register / sign in'}</a>
-            {session && <><button onClick={() => { setTab('likes'); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Your likes</button><button onClick={() => { setTab('matches'); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Matches & messages</button><button onClick={() => { setTab('discover'); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Your profile / discover</button></>}
-            <a href="#membership-plans" onClick={() => setMenuOpen(false)}>Membership plans</a>
-            <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a>
-            <a href="#safety" onClick={() => setMenuOpen(false)}>Your safety</a>
+            <button onClick={() => { setPage('home'); setMenuOpen(false); window.scrollTo({top:0,behavior:'smooth'}); }}>Main page</button>
+            <button onClick={() => { setPage('discover'); setMenuOpen(false); window.scrollTo(0,0); }}>Discover / member portal</button>
+            <button onClick={() => { setPage('plans'); setMenuOpen(false); window.scrollTo(0,0); }}>Subscription plans</button>
+            <button onClick={() => { setPage('how'); setMenuOpen(false); window.scrollTo(0,0); }}>How DateMe works</button>
+            <button onClick={() => { setPage('safety'); setMenuOpen(false); window.scrollTo(0,0); }}>Safety centre</button>
+            {session && isAdmin && <button onClick={() => { setPage('admin'); setMenuOpen(false); window.scrollTo(0,0); }}>Admin portal</button>}
+            <button onClick={() => { setTheme(theme === 'rose' ? 'navy' : theme === 'navy' ? 'green' : 'rose'); setMenuOpen(false); }}>Change theme: {theme === 'rose' ? 'Rose' : theme === 'navy' ? 'Navy' : 'Green'}</button>
+            {!session && <button onClick={() => { setPage('home'); setMenuOpen(false); document.getElementById('join')?.scrollIntoView({behavior:'smooth'}); }}>Register / sign in</button>
           </nav>}
         </div>
         <nav className="top-links" aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="#safety">Your safety</a></nav>
         {session ? <button className="button button-outline top-action" onClick={() => void handleSignOut()}>Sign out</button> : <button className="button button-outline top-action" onClick={() => { setMode('signin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Log in</button>}
       </header>
       <main>
-        {!session && <section className="hero">
+        {page === 'home' && !session && <section className="hero">
           <div className="hero-copy">
             <span className="eyebrow"><span className="sparkle">✦</span> LESS SWIPING. MORE SPARK.</span>
             <h1>Your next chapter<br />starts <span>with a hello.</span></h1>
@@ -269,7 +282,7 @@ export default function App() {
           </div>
         </section>}
 
-        <section className="discover-section" id="discover">
+        {(page === 'discover' || (page === 'home' && Boolean(session))) && <section className="discover-section" id="discover">
           <div className="section-heading"><div><span className="eyebrow">GOOD PEOPLE, REAL POSSIBILITIES</span><h2>{session ? tab === 'matches' ? 'Your connections' : tab === 'profile' ? 'Your story, your way' : 'People you might like' : 'A little closer to your person'}</h2><p>Start with a smile. See where a conversation takes you.</p></div><span className="section-flower" aria-hidden="true">✳</span></div>
           {session && <div className="member-bar"><span>Signed in as <strong>{session.user.email}</strong></span><div className="member-tabs">
             <button className={tab === 'discover' ? 'selected' : ''} onClick={() => { setTab('discover'); setActiveMatchId(''); }}>Discover</button>
@@ -311,11 +324,14 @@ export default function App() {
           </div> : <div className="empty-state"><span>♡</span><h3>{tab === 'likes' ? 'No likes here yet' : 'No profiles yet'}</h3><p>{tab === 'likes' ? 'Explore people and tap the heart on someone who catches your eye.' : 'New member profiles will show up here as people join DateMe.'}</p><button className="button button-primary" onClick={() => setTab('discover')}>Back to discover</button></div>)}
           {!session && <p className="demo-caption">Demo profiles are examples only, not real members. Create an account to start your own journey.</p>}
           {notice && session && <p className="notice member-notice" role="status">{notice}</p>}
-        </section>
+        </section>}
 
-        <section className="membership-section" id="membership-plans"><span className="eyebrow">YOUR JOURNEY, YOUR PACE</span><h2>Membership <span>plans.</span></h2><p>Choose the time period that works for you. Prices and secure payment options will be shown here once subscriptions are activated.</p><div className="plan-periods"><span>Per Week · 7 days</span><span>Per Month</span><span>3 Months</span><span>6 Months</span><span>1 Year · 12 months</span></div><small>Subscriptions are not available for purchase yet.</small></section>
-        <section className="how-section" id="how-it-works"><span className="eyebrow">NOT COMPLICATED. JUST HUMAN.</span><h2>Good things start <span>simply.</span></h2><div className="steps-grid"><article><span className="step-num">01</span><div className="step-icon">✧</div><h3>Show up as you</h3><p>Create a profile that feels like you, not a highlight reel.</p></article><article><span className="step-num">02</span><div className="step-icon">♡</div><h3>Find your people</h3><p>Discover people you’d genuinely like to get to know.</p></article><article><span className="step-num">03</span><div className="step-icon">↗</div><h3>Make the first move</h3><p>A small hello can be the start of something wonderful.</p></article></div></section>
-        <section className="safety-banner" id="safety"><div className="safety-symbol">♡</div><div><span className="eyebrow">ALWAYS YOUR CHOICE</span><h2>Good chemistry needs good boundaries.</h2><p>Your comfort matters. Never share private information before you’re ready, and meet new people in public places.</p></div></section>
+        {page === 'plans' && <section className="portal-page membership-section" id="membership-plans"><div className="portal-page-actions"><button onClick={() => setPage('home')}>← Back</button><button onClick={() => setPage('home')}>× Close</button></div><span className="eyebrow">YOUR JOURNEY, YOUR PACE</span><h2>Membership <span>plans.</span></h2><p>Choose a period to review its draft price and proposed benefits. Amounts and benefits are placeholders until we agree on the final offering.</p><div className="plan-periods">{[{id:'week',label:'Per Week',period:'7 days'},{id:'month',label:'Per Month',period:'1 month'},{id:'quarter',label:'3 Months',period:'3 months'},{id:'half',label:'6 Months',period:'6 months'},{id:'year',label:'1 Year',period:'12 months'}].map(plan => <button key={plan.id} className={selectedPlan===plan.id?'plan-period selected':'plan-period'} onClick={() => setSelectedPlan(plan.id)}>{plan.label}<small>{plan.period}</small></button>)}</div><div className="plan-detail"><span className="draft-label">DRAFT · NOT FOR SALE</span><h3>{{week:'Per Week · 7 days',month:'Per Month',quarter:'3 Months',half:'6 Months',year:'1 Year · 12 months'}[selectedPlan]}</h3><div className="draft-price">Price: <strong>To be decided</strong></div><h4>Proposed benefits to discuss</h4><ul><li>Create and edit your dating profile</li><li>Discover member profiles and send likes</li><li>Match and chat features, subject to account access and availability</li><li>Report and block inappropriate behaviour</li>{selectedPlan!=='week' && <li>Longer access period with no weekly renewal</li>}{selectedPlan==='year' && <li>Potential best-value annual option (price to be agreed)</li>}</ul><p>Payments are not enabled. No subscription can be purchased from this page yet.</p></div></section>}
+        {page === 'admin' && <section className="portal-page membership-section"><div className="portal-page-actions"><button onClick={() => setPage('home')}>← Back</button><button onClick={() => setPage('home')}>× Close</button></div><span className="eyebrow">OWNER ACCESS</span><h2>Administrator <span>portal.</span></h2>{isAdmin ? <div className="plan-detail"><h3>Admin access verified</h3><p>Signed in as {session?.user.email}. The secure admin area is reserved for accounts granted access in the database.</p><p>Management tools are not yet connected.</p></div> : <div className="plan-detail"><h3>Restricted access</h3><p>Your account has not been granted administrator privileges. For security, admin access cannot be self-assigned from this public page.</p><p>We can set up your owner account through a secure, private admin grant after you confirm the account email you want to use.</p></div>}</section>}
+        {page === 'how' && <section className="portal-page how-section"><div className="portal-page-actions"><button onClick={() => setPage('home')}>← Back</button><button onClick={() => setPage('home')}>× Close</button></div><span className="eyebrow">NOT COMPLICATED. JUST HUMAN.</span><h2>Good things start <span>simply.</span></h2><div className="steps-grid"><article><span className="step-num">01</span><h3>Show up as you</h3><p>Create a profile that feels like you.</p></article><article><span className="step-num">02</span><h3>Find your people</h3><p>Discover people you would like to know.</p></article><article><span className="step-num">03</span><h3>Make the first move</h3><p>A kind hello can start a conversation.</p></article></div></section>}
+        {page === 'safety' && <section className="portal-page how-section"><div className="portal-page-actions"><button onClick={() => setPage('home')}>← Back</button><button onClick={() => setPage('home')}>× Close</button></div><span className="eyebrow">ALWAYS YOUR CHOICE</span><h2>Safety <span>centre.</span></h2><p>Protect your personal details, take your time getting to know people, and meet in public places. Report suspicious or abusive behaviour. Safety tools and moderation workflows will be expanded as the app develops.</p></section>}
+        {page === 'home' && !session && <section className="how-section" id="how-it-works"><span className="eyebrow">NOT COMPLICATED. JUST HUMAN.</span><h2>Good things start <span>simply.</span></h2><div className="steps-grid"><article><span className="step-num">01</span><div className="step-icon">✧</div><h3>Show up as you</h3><p>Create a profile that feels like you, not a highlight reel.</p></article><article><span className="step-num">02</span><div className="step-icon">♡</div><h3>Find your people</h3><p>Discover people you’d genuinely like to get to know.</p></article><article><span className="step-num">03</span><div className="step-icon">↗</div><h3>Make the first move</h3><p>A small hello can be the start of something wonderful.</p></article></div></section>
+        {page === 'home' && <section className="safety-banner" id="safety"><div className="safety-symbol">♡</div><div><span className="eyebrow">ALWAYS YOUR CHOICE</span><h2>Good chemistry needs good boundaries.</h2><p>Your comfort matters. Never share private information before you’re ready, and meet new people in public places.</p></div></section>}
       </main>
       <footer><a className="brand-logo brand-logo-footer" href="#" aria-label="DateMe home"><DateMeLogo /></a><p>Made for the moments that matter.</p><span>© {new Date().getFullYear()} DateMe</span></footer>
     </div>
