@@ -1,16 +1,18 @@
 # DateMe 💗
 
-A mobile-friendly dating app starter built with React, TypeScript, Vite and Supabase. Designed to start on free tiers.
+A mobile-friendly dating app built with React, TypeScript, Vite and Supabase, with a free-tier-first setup.
 
-## What's included
+## Current features
 
-- Responsive DateMe landing page and account forms
-- Email/password sign-up and sign-in using Supabase Auth
-- Session persistence and sign-out
-- Discovery cards and a starter likes flow
-- SQL schema for profiles, likes, matches and messages
-- Row Level Security policies for exposed tables
-- Demo profile cards when Supabase environment variables are not configured
+- Responsive landing page and email/password registration and login
+- Session persistence and sign-out through Supabase Auth
+- Profile editor for display name, age (18+), city, bio and a profile photo URL
+- Profile discovery and likes saved in Supabase
+- Automatic mutual-like matching through a database trigger
+- Match list and private chat UI with realtime message updates
+- Row Level Security policies for profiles, likes, matches and messages
+
+Demo profile cards shown before sign-in are illustrative examples, not actual members.
 
 ## Run locally
 
@@ -22,19 +24,20 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open the local URL printed by Vite. Edit `.env.local` with values from your existing Supabase project.
+Open the local URL printed by Vite.
 
-## Connect your existing Supabase project
+## Connect Supabase
 
-1. Open Supabase and select your existing project.
-2. Go to **Project Settings → API**.
-3. Copy the **Project URL** and the **Publishable key** (usually begins with `sb_publishable_`). A legacy `anon` key is also suitable for a public browser client.
-4. Put those values in `.env.local` as `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`.
-5. Open **SQL Editor** and run the SQL from `supabase/schema.sql`.
-6. Under **Authentication → URL Configuration**, allow your local development URL (normally `http://localhost:5173`) if you use email confirmation.
-7. In **Authentication → Providers → Email**, choose whether new accounts require email confirmation.
+The app is already configured in the GitHub Pages workflow for the existing DateMe Supabase project. For local development, go to **Supabase → Project Settings → API** and copy the **Project URL** and **Publishable key** into `.env.local`:
 
-**Security:** Never put a `service_role` key or a secret key in this browser app, GitHub, or a `VITE_*` variable. The database schema enables RLS on all app tables. Run Supabase security advisors after applying it and review the policies before public launch.
+```env
+VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+```
+
+The key used in a browser app must be a public publishable key (or legacy anon key). **Never use a service-role or secret key in client code, GitHub, or any `VITE_*` variable.**
+
+The schema is in `supabase/schema.sql`. It has been applied to the connected Supabase project, including the mutual-like trigger and realtime message publication setup. If setting up a different project, run that SQL in its SQL Editor.
 
 ## Build checks
 
@@ -43,10 +46,6 @@ npm run typecheck
 npm run build
 ```
 
-## Current scope
+## Before a public launch
 
-This is the first foundation, not a finished dating service. Profile editing, reciprocal-match creation, chat UI, reporting/blocking, image upload, account deletion and moderation tools still need implementation before a public launch. Demo cards are examples only, not real or verified users.
-
-## Free deployment
-
-A static Vite app can be hosted on a compatible free static-hosting tier. Configure the same two public environment variables in the host settings. A custom domain is optional and may cost money. Free-tier limits and availability can change.
+This is still an early build. Important next steps include real photo uploads to Supabase Storage, report/block and moderation flows, account deletion, password reset, abuse prevention/rate limits, a more complete privacy/terms experience, and end-to-end testing with multiple accounts. Review the RLS policies and Supabase security advisors before accepting real users. Free-tier quotas can change.
