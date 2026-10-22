@@ -7,3 +7,27 @@
 @media(max-width:680px){.profile-editor{grid-template-columns:1fr;padding:18px;gap:18px}.editor-photo{width:130px;height:130px;margin:0 auto}.editor-fields{grid-template-columns:1fr}.editor-bio{grid-column:auto}.match-layout{grid-template-columns:1fr}.match-list{max-height:230px;overflow:auto}.chat-panel{min-height:400px}.member-tabs{flex-wrap:wrap}.member-tabs button{flex:1 1 38%}}
 
 .editor-photo-column{display:flex;flex-direction:column;align-items:center;gap:12px}.photo-upload-label{display:grid;justify-items:center;gap:6px;text-align:center;font-size:.76rem;font-weight:700;color:#bc4e63;cursor:pointer}.photo-upload-label input{width:100%;max-width:180px;font-size:.68rem;color:#82777c}.photo-upload-label small{font-size:.65rem;color:var(--muted);font-weight:400}
+
+
+/* Approved DateMe heart-and-ribbon identity; keeps the existing blush/rose site palette. */
+.brand-menu-wrap{position:relative;display:flex;align-items:center;gap:12px;z-index:20}
+.brand-logo{display:inline-flex;align-items:center;justify-content:center;flex:none}
+.dateme-logo-art{display:block;width:100%;height:auto;filter:drop-shadow(0 5px 8px rgba(30,22,25,.12))}
+.brand-logo-small{width:66px;height:61px;overflow:visible}
+.portal-toggle{width:36px;height:34px;border:1px solid var(--line);border-radius:10px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0}
+.portal-toggle span{display:block;width:15px;height:2px;border-radius:2px;background:#17324a}
+.portal-menu{position:absolute;top:calc(100% + 12px);left:0;width:230px;padding:9px;background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:0 16px 40px #33202a1c;display:grid;gap:3px;z-index:50}
+.portal-menu a,.portal-menu button{display:block;text-align:left;border:0;background:transparent;border-radius:9px;padding:11px 12px;color:var(--ink);font-size:.86rem}
+.portal-menu a:hover,.portal-menu button:hover{background:var(--blush);color:var(--rose-dark)}
+.registration-logo{width:min(100%,225px);margin:0 auto 8px}
+.registration-logo .dateme-logo-art{max-height:195px}
+.auth-card .card-heading h2{margin-top:2px}
+.brand-logo-footer{width:72px;height:65px}
+.membership-section{padding:65px 10%;text-align:center;background:#fff5f2;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.membership-section h2{font-family:'Playfair Display',Georgia,serif;font-size:clamp(2rem,4vw,3rem);margin:12px 0}
+.membership-section h2 span{color:var(--rose)}
+.membership-section>p{max-width:650px;margin:0 auto 22px;color:var(--muted);line-height:1.7}
+.plan-periods{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:20px auto}
+.plan-periods span{padding:11px 15px;background:#fff;border:1px solid #efdcd8;border-radius:12px;font-size:.85rem;font-weight:600}
+.membership-section small{color:var(--muted)}
+@media(max-width:680px){.brand-logo-small{width:57px;height:54px}.brand-menu-wrap{gap:8px}.portal-menu{width:220px}.registration-logo{width:min(100%,190px)}.registration-logo .dateme-logo-art{max-height:165px}.membership-section{padding:48px 5%}.plan-periods{gap:7px}.plan-periods span{font-size:.78rem;padding:9px 11px}}
