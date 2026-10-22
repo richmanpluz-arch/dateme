@@ -1,4 +1,4 @@
-name: Build and deploy DateMe
+name: Build DateMe
 
 on:
   push:
@@ -7,11 +7,9 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: dateme-build
   cancel-in-progress: true
 
 jobs:
@@ -24,6 +22,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
       - name: Install dependencies
         run: npm install
       - name: Build DateMe
@@ -31,22 +30,3 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://xpyjxwcergdwjybdhjbf.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_I1K5SalJTaaUBCnmRFP3Cw_9zvtPOFS
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-      - name: Upload built site
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
