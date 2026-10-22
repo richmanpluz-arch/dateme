@@ -163,3 +163,43 @@
 
 /* Private administrator report review */
 .admin-report-list{margin-top:24px;text-align:left}.admin-report-list>h3{font-family:'Playfair Display',Georgia,serif;font-size:1.4rem}.admin-report{margin:12px 0;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}.admin-report-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.admin-report-heading strong{color:var(--text-main)}.report-status{display:inline-flex;border-radius:999px;padding:5px 9px;background:var(--blush);color:var(--brand-primary);font-size:.72rem;font-weight:800;text-transform:capitalize}.status-resolved{background:#e3f5e9;color:#176b3a}.status-dismissed{background:#f0edf0;color:#645b66}.admin-report>p{margin:10px 0;color:var(--text-muted);overflow-wrap:anywhere}.admin-report>small{display:block;font-size:.72rem;color:var(--text-muted);overflow-wrap:anywhere}.admin-report-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}.admin-report-actions button{border:1px solid var(--border-color);border-radius:9px;background:var(--surface);padding:8px 11px;color:var(--text-main);font:inherit;font-size:.76rem;cursor:pointer}.admin-report-actions button:hover{border-color:var(--brand-primary);color:var(--brand-primary)}
+
+/* DateMe signature palette: deep navy, rich red, warm cream and restrained gold */
+:root{color:#f8f0df;background:#071426;--ink:#f8f0df;--muted:#c0c7d0;--rose:#b8202e;--rose-dark:#8f1723;--blush:#f8f0df;--line:#26384d;--navy:#071426;--cream:#f8f0df;--red:#b8202e;--gold:#c6a45a}
+body,.app-shell{background:#071426;color:#f8f0df}
+.topbar,footer{background:#071426;border-color:#26384d;color:#d5d9df}
+.top-links{color:#d5d9df}.top-links a:hover{color:#e7c978}
+.button-primary{background:linear-gradient(110deg,#c62836,#8f1723);color:#fff8eb;box-shadow:0 9px 22px #b8202e35}
+.button-outline{border-color:#46556a;background:transparent;color:#f8f0df}
+.hero{background:radial-gradient(ellipse at 13% 35%,#263247 0,transparent 50%),radial-gradient(ellipse at 70% 0,#3a1a25 0,transparent 50%),#071426}
+.eyebrow{color:#e7c978}.sparkle,.hero h1 span,.how-section h2 span{color:#d33a45}
+.hero-lede,.section-heading p,.person-bio,.steps-grid p,.safety-banner p{color:#c0c7d0}
+.art-orbit{border-color:#5b6576}.art-heart{color:#c62836;filter:drop-shadow(0 10px 13px #b8202e50)}
+.art-star{color:#e7c978}.art-note{color:#f8f0df;background:#142238dd}
+.auth-card{background:#101e32;border-color:#35445a;box-shadow:0 22px 65px #0005}
+.card-heading h2,.person-info h3,.steps-grid h3,.safety-banner h2{color:#f8f0df}
+.card-heading p,.terms,.setup-hint{color:#c0c7d0}
+.auth-switch{background:#09172a}.auth-switch button{color:#c0c7d0}.auth-switch button.active{background:#f8f0df;color:#8f1723}
+.auth-form label{color:#f0e7d6}.auth-form input,.profile-editor input,.profile-editor textarea,.profile-editor select,.chat-compose input,.discover-search input{background:#09172a;color:#f8f0df;border-color:#394960}
+.auth-form input::placeholder,.chat-compose input::placeholder{color:#8e9aaa}.auth-form input:focus{border-color:#c6a45a;box-shadow:0 0 0 3px #c6a45a22}
+.notice{background:#3b1822;color:#ffe4d7}.setup-hint{background:#142238}
+.discover-section{background:#0b192c}.section-flower{color:#c6a45a}
+.person-card{background:#101e32;border-color:#2d3c51}.person-card:hover{box-shadow:0 15px 32px #0005}
+.person-photo-wrap,.photo-placeholder{background:#17253a}.photo-placeholder{color:#e7c978;background:linear-gradient(145deg,#17253a,#283247)}
+.profile-number{background:#f8f0df;color:#071426}.like-button{color:#b8202e}.like-button.liked{background:#b8202e;color:#fff}
+.person-info h3 span,.person-city{color:#c0c7d0}.person-city span{color:#e7c978}
+.say-hello{border-color:#5a3440;background:#261824;color:#ffe8d8}
+.member-bar,.member-bar strong{color:#d9dfeb}.member-tabs button{background:#101e32;border-color:#394960;color:#d9dfeb}.member-tabs button.selected{background:#3b1822;border-color:#b8202e;color:#fff0df}
+.empty-state,.profile-setup{background:#101e32;border-color:#46556a}.empty-state>span,.profile-setup-icon{color:#e7c978}.empty-state p,.profile-setup p{color:#c0c7d0}
+.how-section{background:linear-gradient(135deg,#111f33,#071426 58%,#241721)}
+.steps-grid article{background:#101e32;border-color:#35445a}.step-num{color:#e7c978}.step-icon{background:#3b1822;color:#f8f0df}
+.safety-banner{background:#101e32;border-color:#2d3c51}.safety-symbol{background:#3b1822;color:#e7c978}
+footer .brand{color:#f8f0df}
+.portal-page,.plan-detail,.admin-report{background:#101e32;color:#f8f0df;border-color:#35445a}
+.plan-period{background:#101e32;color:#f8f0df;border-color:#394960}.plan-period.selected{background:#3b1822;border-color:#c62836;color:#fff0df}
+.chat-panel,.match-list,.chat-placeholder,.profile-editor,.discover-search,.admin-report-list{background:#101e32;border-color:#35445a;color:#f8f0df}
+.chat-messages{background:#09172a}.message-bubble{background:#17263a;color:#f8f0df;border-color:#35445a}.message-bubble.mine{background:#4a1c28;color:#fff0df;border-color:#74303c}
+.chat-tools-note,.reply-composer,.voice-preview,.emoji-picker{background:#142238;color:#dce2eb;border-color:#35445a}
+.ai-demo-entry,.demo-chat-panel{background:#101e32;color:#f8f0df;border-color:#35445a}
+.safety-policy-grid article{background:#101e32;border-color:#35445a;color:#f8f0df}
+@media(max-width:680px){.portal-menu{background:#101e32;border-color:#35445a}.portal-menu button{color:#f8f0df;border-color:#26384d}}
