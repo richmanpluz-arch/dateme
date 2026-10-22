@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from './supabase';
 
@@ -65,8 +65,9 @@ export default function App() {
   const [recordingBusy, setRecordingBusy] = useState(false);
   const [voicePreview, setVoicePreview] = useState<string | null>(null);
   const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
-  const recorderRef = { current: null as MediaRecorder | null };
-  const recorderChunksRef = { current: [] as BlobPart[] };
+  const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recorderChunksRef = useRef<BlobPart[]>([]);
   const [activeMatchId, setActiveMatchId] = useState('');
   const [tab, setTab] = useState<'discover' | 'likes' | 'matches' | 'profile'>('discover');
 
@@ -147,6 +148,21 @@ export default function App() {
     [profiles, liked, tab],
   );
   const activeMatch = matches.find((match) => match.id === activeMatchId) || null;
+
+  useEffect(() => {
+    if (!supabase || !session || !messages.length) { setVoiceUrls({}); return; }
+    let cancelled = false;
+    async function loadVoiceUrls() {
+      const audioMessages = messages.filter((message) => message.audio_path && (!message.expires_at || new Date(message.expires_at).getTime() > Date.now()));
+      const pairs = await Promise.all(audioMessages.map(async (message) => {
+        const { data } = await supabase!.storage.from('dateme-voice-notes').createSignedUrl(message.audio_path!, 3600);
+        return data?.signedUrl ? [message.id, data.signedUrl] as const : null;
+      }));
+      if (!cancelled) setVoiceUrls(Object.fromEntries(pairs.filter((pair): pair is readonly [string, string] => Boolean(pair))));
+    }
+    void loadVoiceUrls();
+    return () => { cancelled = true; };
+  }, [messages, session?.user.id]);
   const activePerson = activeMatch ? profiles.find((profile) => profile.id === (activeMatch.user_one === session?.user.id ? activeMatch.user_two : activeMatch.user_one)) : null;
 
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
@@ -376,7 +392,7 @@ export default function App() {
             <section className="chat-panel">{activeMatch ? <>
               <div className="chat-heading"><span className="match-avatar">{activePerson?.photo_url ? <img src={activePerson.photo_url} alt="" /> : '♡'}</span><div><strong>{activePerson?.display_name || 'Your match'}</strong><small>Only you and your match can see this chat</small></div></div>
               <div className="chat-tools-note">🔒 Private chat · messages expire after 24 hours</div>
-              <div className="chat-messages">{messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).map((message) => <div key={message.id} className={message.sender_id === session.user.id ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" title="Reply to message" aria-label="Reply to message" onClick={() => { setReplyTo(message); setMessageText(''); }}>↶ Reply</button><button type="button" title="Copy message" aria-label="Copy message" onClick={() => { void navigator.clipboard?.writeText(message.body).then(() => setNotice('Message copied.')).catch(() => setNotice('Copy was blocked by your browser.')); }}>Copy</button><button type="button" title="Translate message" aria-label="Translate message" onClick={() => window.open('https://translate.google.com/?sl=auto&tl=en&text=' + encodeURIComponent(message.body) + '&op=translate', '_blank', 'noopener,noreferrer')}>Translate</button></div>{message.reply_to && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio controls preload="none" src={supabase.storage.from('dateme-voice-notes').getPublicUrl(message.audio_path).data.publicUrl} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · disappears in 24h</time></div>)}</div>
+              <div className="chat-messages">{messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).map((message) => <div key={message.id} className={message.sender_id === session.user.id ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" title="Reply to message" aria-label="Reply to message" onClick={() => { setReplyTo(message); setMessageText(''); }}>↶ Reply</button><button type="button" title="Copy message" aria-label="Copy message" onClick={() => { void navigator.clipboard?.writeText(message.body).then(() => setNotice('Message copied.')).catch(() => setNotice('Copy was blocked by your browser.')); }}>Copy</button><button type="button" title="Translate message" aria-label="Translate message" onClick={() => window.open('https://translate.google.com/?sl=auto&tl=en&text=' + encodeURIComponent(message.body) + '&op=translate', '_blank', 'noopener,noreferrer')}>Translate</button></div>{message.reply_to && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · disappears in 24h</time></div>)}</div>
               {replyTo && <div className="reply-composer"><span>↶ Replying to: {replyTo.body.slice(0, 90)}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
               {voicePreview && <div className="voice-preview"><audio controls src={voicePreview} /><button type="button" onClick={() => { URL.revokeObjectURL(voicePreview); setVoicePreview(null); setVoiceBlob(null); }}>Discard</button><button type="button" onClick={() => void sendVoiceNote()} disabled={recordingBusy}>Send voice note</button></div>}
               {showEmojiPicker && <div className="emoji-picker" aria-label="Emoji picker">{['😀','😂','🥰','😍','😘','😊','😉','❤️','💕','💖','🔥','👏','👍','🙏','🌹','✨','😢','😅','🤗','💋'].map((emoji) => <button type="button" key={emoji} onClick={() => setMessageText((text) => text + emoji)}>{emoji}</button>)}</div>}
