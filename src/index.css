@@ -227,3 +227,58 @@ footer .brand{color:#f8f0df}
 .app-shell .like-button.liked{background:#c8102e;color:#fff}
 .app-shell .status-resolved{background:#123d35;color:#a8e0c0}
 .app-shell .registration-page .registration-logo{filter:drop-shadow(0 4px 12px #0005)}
+
+
+/* Premium DateMe brand refresh: calm navy, emerald, red and fine gold accents. */
+:root{font-family:'DM Sans',sans-serif;color:#f8f0df;background:#071426;--ink:#f8f0df;--muted:#c2ccd5;--rose:#c8102e;--rose-dark:#9f1026;--blush:#102a36;--line:#254052}
+body{background:#071426;color:#f8f0df}
+.app-shell{background:#071426;color:#f8f0df;min-height:100vh}
+.app-shell .topbar{background:rgba(7,20,38,.97);border-bottom:1px solid rgba(198,164,90,.35);color:#f8f0df}
+.app-shell .top-links{color:#d8e0e5}
+.app-shell .top-links button{color:inherit;background:transparent;border:0}
+.app-shell .brand,.app-shell .brand-logo{color:#f8f0df}
+.app-shell .brand-dot,.app-shell h1 span,.app-shell .section-heading h2 span,.app-shell .membership-section h2 span{color:#e11d38}
+.app-shell .hero.registration-page{isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 12% 14%,rgba(200,16,46,.24),transparent 30%),radial-gradient(ellipse at 90% 90%,rgba(0,103,71,.36),transparent 34%),radial-gradient(ellipse at 75% 10%,rgba(31,75,118,.5),transparent 38%),linear-gradient(135deg,#071426 0%,#0b2035 56%,#071426 100%)!important;color:#f8f0df}
+.app-shell .registration-page:before{content:'♡';position:absolute;z-index:-1;right:5%;top:4%;font-family:Georgia,serif;font-size:clamp(18rem,35vw,34rem);line-height:1;color:rgba(240,245,248,.035);text-shadow:0 0 70px rgba(255,255,255,.04);pointer-events:none}
+.app-shell .registration-page:after{content:'';position:absolute;z-index:-1;left:-8%;top:-20%;width:48%;height:150%;border:1px solid rgba(198,164,90,.5);border-radius:50%;transform:rotate(26deg);box-shadow:18px 0 0 -17px rgba(0,103,71,.85),36px 0 0 -35px rgba(200,16,46,.85);pointer-events:none}
+.app-shell .registration-page .hero-copy h1{color:#f8f0df}
+.app-shell .registration-page .hero-lede,.app-shell .registration-page .hero-points{color:#d5dfdf}
+.app-shell .registration-page .eyebrow,.app-shell .eyebrow{color:#d7bc73}
+.app-shell .registration-page .sparkle{color:#e11d38}
+.app-shell .registration-page .point-icon,.app-shell .step-icon,.app-shell .safety-symbol{background:#123d35;color:#bde5cf}
+.app-shell .registration-page .auth-card{background:rgba(248,240,223,.98);color:#102033;border:1px solid rgba(198,164,90,.75);border-top:4px solid #c8102e;box-shadow:0 28px 85px rgba(0,0,0,.34)}
+.app-shell .registration-page .card-heading h2{color:#102033}
+.app-shell .registration-page .card-heading p{color:#5c6671}
+.app-shell .registration-page .mini-heart{background:#fbe7e8;color:#c8102e}
+.app-shell .registration-page .auth-switch{background:#e9e7e0}
+.app-shell .registration-page .auth-switch button{color:#52606a}
+.app-shell .registration-page .auth-switch button.active{background:#006747;color:#fff;box-shadow:0 3px 10px #00674730}
+.app-shell .registration-page .auth-form label{color:#243545}
+.app-shell .registration-page .auth-form input{background:#fffefa;color:#152638;border-color:#d9d4c9}
+.app-shell .registration-page .auth-form input:focus{border-color:#006747;box-shadow:0 0 0 3px #00674718}
+.app-shell .button-primary,.app-shell button.button-primary,.app-shell .top-action:not(.button-outline){background:linear-gradient(110deg,#c8102e,#951125);border:1px solid #c8102e;color:#fff8eb;box-shadow:0 8px 20px #c8102e2b}
+.app-shell .button-outline{border-color:#bba66e;color:#f8f0df;background:rgba(7,20,38,.45)}
+.app-shell .registration-page .button-outline{color:#102033}
+.app-shell .discover-section{background:linear-gradient(180deg,#0a1b2e 0%,#0d2635 55%,#071426 100%);color:#f8f0df;position:relative}
+.app-shell .discover-section:before{content:'♡     ♡';position:absolute;right:5%;top:30px;font-size:5rem;letter-spacing:2rem;color:rgba(255,255,255,.035);pointer-events:none}
+.app-shell .discover-section .section-heading p,.app-shell .muted-copy,.app-shell .demo-caption{color:#b9c8d1}
+.app-shell .person-card,.app-shell .profile-editor,.app-shell .match-list,.app-shell .chat-panel,.app-shell .demo-chat-panel,.app-shell .ai-demo-entry{background:#10263a;border-color:#284457;color:#f8f0df}
+.app-shell .person-info h3,.app-shell .person-bio,.app-shell .person-city,.app-shell .chat-heading,.app-shell .chat-placeholder{color:#f8f0df}
+.app-shell .person-info,.app-shell .person-card{color:#f8f0df}
+.app-shell .interest-chips span,.app-shell .say-hello{background:#102d2a;border-color:#28664e;color:#bde5cf}
+.app-shell .member-bar,.app-shell .discover-search{background:#0d2032;border-color:#294355;color:#e9f0f2}
+.app-shell .discover-search input{background:transparent;color:#fff}
+.app-shell .member-tabs button{color:#c5d1d9}
+.app-shell .member-tabs button.selected{background:#123d35;color:#bde5cf;border-color:#006747}
+.app-shell .portal-page,.app-shell .how-section,.app-shell .membership-section{background:linear-gradient(135deg,#0a1b2e,#102b36 58%,#071426);color:#f8f0df}
+.app-shell .plan-detail,.app-shell .steps-grid article{background:#10263a;border-color:#284457;color:#f8f0df}
+.app-shell .portal-page p,.app-shell .plan-detail p,.app-shell .plan-detail li,.app-shell .steps-grid p{color:#c5d1d9}
+.app-shell .plan-period{background:#10263a;border-color:#284457;color:#f8f0df}
+.app-shell .plan-period.selected{background:#123d35;border-color:#006747}
+.app-shell .portal-menu{background:#10263a;border-color:#284457;color:#f8f0df}
+.app-shell .portal-menu button{color:#f8f0df}
+.app-shell footer{background:#050f1d;border-top:1px solid rgba(198,164,90,.3);color:#d7e0e5}
+.app-shell .registration-page .hero-art{display:none}
+.app-shell .registration-page .hero-copy{max-width:540px}
+.app-shell .registration-page .registration-logo{filter:drop-shadow(0 4px 12px #0005)}
+@media(max-width:760px){.app-shell .hero.registration-page{grid-template-columns:1fr;padding:38px 5% 48px;gap:24px}.app-shell .registration-page .hero-copy{text-align:center}.app-shell .registration-page .hero-points{justify-content:center}.app-shell .registration-page:before{font-size:18rem;right:-20%;top:18%}.app-shell .registration-page:after{width:80%;left:-25%}.app-shell .registration-page .auth-card{justify-self:center;max-width:480px;padding:25px 22px}.app-shell .topbar{padding:0 4%}.app-shell .top-links{gap:12px}}
