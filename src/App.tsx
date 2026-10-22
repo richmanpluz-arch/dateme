@@ -269,7 +269,7 @@ export default function App() {
             <button onClick={() => { setPage('safety'); setMenuOpen(false); window.scrollTo(0,0); }}>Safety centre</button>
             {session && isAdmin && <button onClick={() => { setPage('admin'); setMenuOpen(false); window.scrollTo(0,0); }}>Admin portal</button>}
             <button onClick={() => { setTheme(theme === 'rose' ? 'navy' : theme === 'navy' ? 'green' : 'rose'); setMenuOpen(false); }}>Change theme: {theme === 'rose' ? 'Rose' : theme === 'navy' ? 'Navy' : 'Green'}</button>
-            {!session && <button onClick={() => { setPage('register'); setMenuOpen(false); window.scrollTo({top:0,behavior:'smooth'}); }}>Register / sign in</button>
+            {!session && <button onClick={() => { setPage('register'); setMenuOpen(false); window.scrollTo({top:0,behavior:'smooth'}); }}>Register / sign in</button>}
           </nav>}
         </div>
         <nav className="top-links" aria-label="Main navigation"><button onClick={() => { setPage("how"); setMenuOpen(false); window.scrollTo(0,0); }}>How it works</button><button onClick={() => { setPage("safety"); setMenuOpen(false); window.scrollTo(0,0); }}>Your safety</button>{session && <button onClick={() => { setPage("plans"); setMenuOpen(false); window.scrollTo(0,0); }}>Membership</button>}</nav>
