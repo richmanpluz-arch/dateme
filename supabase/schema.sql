@@ -117,20 +117,128 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $
+declare
+  requested_age_text text;
+  requested_age smallint;
 begin
-  insert into public.profiles (id, display_name)
+  requested_age_text := coalesce(new.raw_user_meta_data ->> 'age', '');
+  if requested_age_text !~ '^[0-9]{1,3}
+
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+
+
+-- Create a match automatically when two members like each other.
+create or replace function public.create_match_on_mutual_like()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if exists (
+    select 1 from public.likes l
+    where l.user_id = new.liked_user_id
+      and l.liked_user_id = new.user_id
+  ) then
+    insert into public.matches (user_one, user_two)
+    values (least(new.user_id, new.liked_user_id), greatest(new.user_id, new.liked_user_id))
+    on conflict (user_one, user_two) do nothing;
+  end if;
+  return new;
+end;
+$;
+
+revoke execute on function public.create_match_on_mutual_like() from public, anon, authenticated;
+
+drop trigger if exists on_mutual_like_created on public.likes;
+create trigger on_mutual_like_created
+  after insert on public.likes
+  for each row execute function public.create_match_on_mutual_like();
+
+-- Enable message insert events for live chat, without failing if already enabled.
+do $
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (
+       select 1 from pg_publication_tables
+       where pubname = 'supabase_realtime'
+         and schemaname = 'public'
+         and tablename = 'messages'
+     ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $;
+
+
+
+-- Public profile photo bucket. Uploads are limited to each member's own folder.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('dateme-avatars', 'dateme-avatars', true, 5242880, array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Anyone can view DateMe profile photos" on storage.objects;
+create policy "Anyone can view DateMe profile photos"
+  on storage.objects for select to anon, authenticated
+  using (bucket_id = 'dateme-avatars');
+
+drop policy if exists "Members can upload their own DateMe photos" on storage.objects;
+create policy "Members can upload their own DateMe photos"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'dateme-avatars'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+drop policy if exists "Members can update their own DateMe photos" on storage.objects;
+create policy "Members can update their own DateMe photos"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'dateme-avatars'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  )
+  with check (
+    bucket_id = 'dateme-avatars'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+drop policy if exists "Members can delete their own DateMe photos" on storage.objects;
+create policy "Members can delete their own DateMe photos"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'dateme-avatars'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+ then
+    raise exception 'DateMe is only available to people aged 18 and older.';
+  end if;
+  requested_age := requested_age_text::smallint;
+  if requested_age < 18 or requested_age > 120 then
+    raise exception 'DateMe is only available to people aged 18 and older.';
+  end if;
+
+  insert into public.profiles (id, display_name, age)
   values (
     new.id,
     coalesce(
       nullif(left(trim(new.raw_user_meta_data ->> 'display_name'), 60), ''),
       'New member'
-    )
+    ),
+    requested_age
   )
   on conflict (id) do nothing;
   return new;
 end;
-$$;
+$;
 
 revoke execute on function public.handle_new_user() from public, anon, authenticated;
 
