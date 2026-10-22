@@ -56,7 +56,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [page, setPage] = useState<'register' | 'home' | 'discover' | 'plans' | 'how' | 'safety' | 'admin'>('register');
   const [selectedPlan, setSelectedPlan] = useState('week');
-  const [theme, setTheme] = useState<'rose' | 'navy' | 'green'>('rose');
+  const [theme, setTheme] = useState<'rose' | 'navy' | 'green'>('navy');
   const [isAdmin, setIsAdmin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
