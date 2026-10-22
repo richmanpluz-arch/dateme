@@ -297,6 +297,11 @@ export default function App() {
     event.preventDefault();
     const body = messageText.trim();
     if (!supabase || !session || !activeMatchId || !body || body.length > 2000) return;
+    const { data: matchRow } = await supabase.from('matches').select('user_one, user_two').eq('id', activeMatchId).maybeSingle();
+    if (!matchRow || ![matchRow.user_one, matchRow.user_two].includes(session.user.id)) { setNotice('This conversation is no longer available.'); return; }
+    const otherUserId = matchRow.user_one === session.user.id ? matchRow.user_two : matchRow.user_one;
+    const { data: blockRows } = await supabase.from('member_blocks').select('id').or(`and(blocker_id.eq.${session.user.id},blocked_user_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_user_id.eq.${session.user.id})`).limit(1);
+    if (blockRows?.length) { setNotice('Messaging is unavailable because one of these accounts has blocked the other.'); return; }
     const { data, error } = await supabase.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
     if (error) { setNotice('Message could not be sent. Messaging is only available to matched members.'); return; }
     if (data) setMessages((current) => current.some((item) => item.id === data.id) ? current : [...current, data as Message]);
