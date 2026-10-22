@@ -114,7 +114,7 @@ export default function App() {
         supabase!.from('profiles').select('id, display_name, age, city, bio, photo_url, interests, prompt_question, prompt_answer, looking_for, languages').neq('id', userId).order('created_at', { ascending: false }).limit(60),
         supabase!.from('likes').select('liked_user_id').eq('user_id', userId),
         supabase!.from('matches').select('id, user_one, user_two, created_at').or(`user_one.eq.${userId},user_two.eq.${userId}`).order('created_at', { ascending: false }),
-        supabase!.from('member_blocks').select('blocked_user_id').eq('blocker_id', userId),
+        supabase!.from('member_blocks').select('blocker_id, blocked_user_id').or(`blocker_id.eq.${userId},blocked_user_id.eq.${userId}`),
       ]);
       if (cancelled) return;
       if (own.data) setMyProfile(own.data as Profile);
@@ -122,7 +122,7 @@ export default function App() {
       if (people.data) setProfiles(people.data as Profile[]);
       if (sentLikes.data) setLiked(sentLikes.data.map((row) => row.liked_user_id));
       if (matchRows.data) setMatches(matchRows.data as Match[]);
-      if (blocks.data) setBlockedIds(blocks.data.map((row) => row.blocked_user_id));
+      if (blocks.data) setBlockedIds(blocks.data.map((row) => row.blocker_id === userId ? row.blocked_user_id : row.blocker_id));
       if (own.error || people.error || sentLikes.error || matchRows.error) {
         setNotice('Some account data could not load. Check the Supabase policies and schema setup.');
       }
