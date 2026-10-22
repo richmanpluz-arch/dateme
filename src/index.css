@@ -31,3 +31,23 @@
 .plan-periods span{padding:11px 15px;background:#fff;border:1px solid #efdcd8;border-radius:12px;font-size:.85rem;font-weight:600}
 .membership-section small{color:var(--muted)}
 @media(max-width:680px){.brand-logo-small{width:57px;height:54px}.brand-menu-wrap{gap:8px}.portal-menu{width:220px}.registration-logo{width:min(100%,190px)}.registration-logo .dateme-logo-art{max-height:165px}.membership-section{padding:48px 5%}.plan-periods{gap:7px}.plan-periods span{font-size:.78rem;padding:9px 11px}}
+
+/* Portal layouts and accessible theme presets */
+.theme-navy{--rose:#244d70;--rose-dark:#17334c;--blush:#eaf1f7;--line:#d9e4ed}
+.theme-green{--rose:#16765a;--rose-dark:#07543d;--blush:#e9f6ef;--line:#d4e8dd}
+.portal-page{min-height:calc(100vh - 140px);padding:34px max(5%,calc((100% - 1050px)/2))}
+.portal-page-actions{display:flex;justify-content:space-between;margin:0 0 28px}
+.portal-page-actions button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 16px;color:var(--ink);font-weight:600}
+.plan-periods{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:24px auto}
+.plan-period{display:flex;flex-direction:column;gap:4px;padding:13px 16px;background:#fff;border:1px solid #efdcd8;border-radius:12px;font:inherit;font-weight:700;color:var(--ink)}
+.plan-period small{font-size:.75rem;color:var(--muted);font-weight:400}
+.plan-period.selected{background:var(--blush);border-color:var(--rose);box-shadow:0 0 0 2px color-mix(in srgb,var(--rose) 12%,transparent)}
+.plan-detail{max-width:640px;margin:26px auto 0;padding:26px;text-align:left;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 35px #39262a0a}
+.plan-detail h3{font-family:'Playfair Display',Georgia,serif;font-size:1.7rem;margin:10px 0}
+.plan-detail h4{margin-bottom:8px}.plan-detail li{margin:9px 0;color:var(--muted);line-height:1.5}.plan-detail p{color:var(--muted);line-height:1.6}
+.draft-label{font-size:.68rem;font-weight:800;letter-spacing:.12em;color:var(--rose-dark)}
+.draft-price{padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.brand-logo-small{background:transparent}
+.dateme-logo-art{mix-blend-mode:multiply;filter:contrast(1.12) saturate(1.12) drop-shadow(0 2px 4px rgba(20,25,30,.1))}
+.registration-logo .dateme-logo-art{width:100%;height:auto;mix-blend-mode:multiply}
+@media(max-width:680px){.portal-page{padding:25px 5%;min-height:calc(100vh - 120px)}.plan-detail{padding:19px}.plan-period{flex:1 1 28%;min-width:100px}}
