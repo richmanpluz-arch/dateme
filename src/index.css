@@ -282,3 +282,32 @@ body{background:#071426;color:#f8f0df}
 .app-shell .registration-page .hero-copy{max-width:540px}
 .app-shell .registration-page .registration-logo{filter:drop-shadow(0 4px 12px #0005)}
 @media(max-width:760px){.app-shell .hero.registration-page{grid-template-columns:1fr;padding:38px 5% 48px;gap:24px}.app-shell .registration-page .hero-copy{text-align:center}.app-shell .registration-page .hero-points{justify-content:center}.app-shell .registration-page:before{font-size:18rem;right:-20%;top:18%}.app-shell .registration-page:after{width:80%;left:-25%}.app-shell .registration-page .auth-card{justify-self:center;max-width:480px;padding:25px 22px}.app-shell .topbar{padding:0 4%}.app-shell .top-links{gap:12px}}
+
+/* Final specificity pass: apply the approved DateMe palette across both theme classes. */
+.app-shell.theme-navy,.app-shell.theme-green,.app-shell.theme-rose{--rose:#c8102e;--rose-dark:#941126;--blush:#102a36;--line:#284457;--ink:#f8f0df;--muted:#c2ccd5}
+.app-shell.theme-navy .registration-page,.app-shell.theme-green .registration-page,.app-shell.theme-rose .registration-page{background:radial-gradient(ellipse at 12% 14%,rgba(200,16,46,.22),transparent 32%),radial-gradient(ellipse at 90% 90%,rgba(0,103,71,.32),transparent 35%),radial-gradient(ellipse at 75% 10%,rgba(31,75,118,.42),transparent 38%),linear-gradient(135deg,#071426 0%,#0b2035 56%,#071426 100%)!important}
+.app-shell.theme-navy .hero,.app-shell.theme-green .hero,.app-shell.theme-rose .hero{color:#f8f0df}
+.app-shell .brand-mark{background:#c8102e;color:#fff8eb;box-shadow:0 5px 18px #c8102e35}
+.app-shell .brand-logo-small{background:transparent;border:0;padding:0;display:flex;align-items:center;justify-content:center}
+.app-shell .brand-logo-small .dateme-logo-art{width:76px;height:65px;object-fit:contain;display:block}
+.app-shell .brand-logo-footer .dateme-logo-art{width:112px;height:100px;object-fit:contain;display:block}
+.app-shell .registration-logo .dateme-logo-art{width:100%;max-width:168px;height:130px;object-fit:contain;display:block;margin:0 auto 8px}
+.app-shell .registration-page .auth-card{background:rgba(248,240,223,.98)!important;color:#102033!important;border:1px solid rgba(198,164,90,.75);border-top:4px solid #c8102e;box-shadow:0 28px 85px rgba(0,0,0,.34)}
+.app-shell .registration-page .auth-form label{color:#243545}
+.app-shell .registration-page .auth-form input{background:#fffefa;color:#152638;border-color:#d9d4c9}
+.app-shell .registration-page .auth-form input:focus{border-color:#006747;box-shadow:0 0 0 3px #00674718}
+.app-shell .registration-page .auth-switch{background:#e9e7e0}
+.app-shell .registration-page .auth-switch button.active{background:#006747;color:#fff}
+.app-shell .discover-section{background:radial-gradient(ellipse at 90% 0,rgba(0,103,71,.2),transparent 34%),linear-gradient(180deg,#0a1b2e,#0d2635 55%,#071426);color:#f8f0df}
+.app-shell .discover-section .person-card,.app-shell .discover-section .profile-editor,.app-shell .discover-section .match-list,.app-shell .discover-section .chat-panel,.app-shell .discover-section .demo-chat-panel,.app-shell .discover-section .ai-demo-entry{background:#10263a;border-color:#284457;color:#f8f0df}
+.app-shell .discover-section .person-info h3,.app-shell .discover-section .person-bio,.app-shell .discover-section .person-city,.app-shell .discover-section .chat-heading{color:#f8f0df}
+.app-shell .discover-section .section-heading p,.app-shell .discover-section .demo-caption{color:#b9c8d1}
+.app-shell .discover-section .member-bar,.app-shell .discover-section .discover-search{background:#0d2032;border-color:#294355;color:#e9f0f2}
+.app-shell .discover-section .discover-search input{color:#fff}
+.app-shell .discover-section .member-tabs button{color:#c5d1d9}
+.app-shell .discover-section .member-tabs button.selected{background:#123d35;color:#bde5cf;border-color:#006747}
+.app-shell .discover-section .interest-chips span,.app-shell .discover-section .say-hello{background:#102d2a;border-color:#28664e;color:#bde5cf}
+.app-shell .portal-page{background:linear-gradient(135deg,#0a1b2e,#102b36 58%,#071426);color:#f8f0df}
+.app-shell .portal-page .plan-detail,.app-shell .portal-page .steps-grid article{background:#10263a;border-color:#284457;color:#f8f0df}
+.app-shell footer{background:#050f1d;border-top:1px solid rgba(198,164,90,.3);color:#d7e0e5}
+@media(max-width:760px){.app-shell .brand-logo-small .dateme-logo-art{width:62px;height:56px}.app-shell .registration-page .auth-card{padding:24px 20px}}
