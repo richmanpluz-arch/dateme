@@ -30,7 +30,7 @@ jobs:
         run: npm run build
         env:
           VITE_SUPABASE_URL: https://xpyjxwcergdwjybdhjbf.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_I1K5SalJTaaUBCnmRFP3Cw_9zvtPOFS
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload built site
