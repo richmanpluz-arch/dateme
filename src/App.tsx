@@ -20,10 +20,30 @@ const demoProfiles: Profile[] = [
 ];
 const emptyProfile = (id: string, name = ''): Profile => ({ id, display_name: name, age: null, city: '', bio: '', photo_url: '' });
 
+function DateMeLogo() {
+  return <svg className="dateme-logo-art" viewBox="0 0 320 300" role="img" aria-label="DateMe red heart wrapped in navy and emerald ribbons with gold trim">
+    <defs>
+      <linearGradient id="heart-shine" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ff6267"/><stop offset=".42" stopColor="#f20c1c"/><stop offset="1" stopColor="#a8000c"/></linearGradient>
+      <linearGradient id="navy-ribbon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#173b5b"/><stop offset="1" stopColor="#061a30"/></linearGradient>
+      <linearGradient id="green-ribbon" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#006447"/><stop offset="1" stopColor="#003b2c"/></linearGradient>
+    </defs>
+    <path d="M160 264 C133 241 42 167 43 103 C44 50 107 38 160 91 C213 38 276 50 277 103 C278 167 187 241 160 264Z" fill="#8d0710" opacity=".45" transform="translate(0 5)"/>
+    <path d="M160 258 C133 235 42 161 43 97 C44 44 107 32 160 85 C213 32 276 44 277 97 C278 161 187 235 160 258Z" fill="url(#heart-shine)" stroke="#d90b1b" strokeWidth="4"/>
+    <path d="M65 94 C73 62 106 59 127 79" fill="none" stroke="#ffb5b0" strokeWidth="7" strokeLinecap="round" opacity=".85"/>
+    <path d="M184 80 C211 53 247 66 256 92" fill="none" stroke="#ff8a8d" strokeWidth="6" strokeLinecap="round" opacity=".75"/>
+    <path d="M25 113 C69 74 106 73 160 100 C214 73 251 74 295 113 L295 139 C244 109 209 111 160 133 C111 111 76 109 25 139Z" fill="url(#navy-ribbon)" stroke="#d8b76a" strokeWidth="2.5"/>
+    <path d="M14 155 C72 121 105 131 160 151 C215 131 248 121 306 155 L306 182 C249 151 215 164 160 184 C105 164 71 151 14 182Z" fill="url(#green-ribbon)" stroke="#d8b76a" strokeWidth="2.5"/>
+    <path d="M25 202 C78 177 112 183 160 202 C208 183 242 177 295 202 L295 228 C243 206 208 218 160 236 C112 218 77 206 25 228Z" fill="url(#navy-ribbon)" stroke="#d8b76a" strokeWidth="2.5"/>
+    <g fill="#fff3d9" fontFamily="Georgia,serif" fontStyle="italic" fontWeight="bold" fontSize="16"><text x="44" y="116" transform="rotate(-7 44 116)">Date Me</text><text x="190" y="116" transform="rotate(7 190 116)">Date Me</text><text x="37" y="166" transform="rotate(-4 37 166)">Date Me</text><text x="197" y="166" transform="rotate(4 197 166)">Date Me</text><text x="52" y="217" transform="rotate(-5 52 217)">Date Me</text><text x="190" y="217" transform="rotate(5 190 217)">Date Me</text></g>
+    <g fill="#fa3150"><path d="M160 112 C151 102 139 110 146 119 L160 131 L174 119 C181 110 169 102 160 112Z"/><path d="M160 162 C151 152 139 160 146 169 L160 181 L174 169 C181 160 169 152 160 162Z"/><path d="M160 212 C151 202 139 210 146 219 L160 231 L174 219 C181 210 169 202 160 212Z"/></g>
+  </svg>;
+}
+
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [checkingSession, setCheckingSession] = useState(Boolean(supabase));
   const [mode, setMode] = useState<'signin' | 'signup'>('signup');
+  const [menuOpen, setMenuOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -225,7 +245,17 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="#" aria-label="DateMe home"><span className="brand-mark">♥</span> DateMe<span className="brand-dot">.</span></a>
+        <div className="brand-menu-wrap">
+          <a className="brand-logo brand-logo-small" href="#" aria-label="DateMe home"><DateMeLogo /></a>
+          <button className="portal-toggle" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><span></span><span></span><span></span></button>
+          {menuOpen && <nav className="portal-menu" aria-label="DateMe portals">
+            <a href={session ? '#discover' : '#join'} onClick={() => setMenuOpen(false)}>{session ? 'Discover people' : 'Register / sign in'}</a>
+            {session && <><button onClick={() => { setTab('likes'); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Your likes</button><button onClick={() => { setTab('matches'); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Matches & messages</button><button onClick={() => { setTab('discover'); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Your profile / discover</button></>}
+            <a href="#membership-plans" onClick={() => setMenuOpen(false)}>Membership plans</a>
+            <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a>
+            <a href="#safety" onClick={() => setMenuOpen(false)}>Your safety</a>
+          </nav>}
+        </div>
         <nav className="top-links" aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="#safety">Your safety</a></nav>
         {session ? <button className="button button-outline top-action" onClick={() => void handleSignOut()}>Sign out</button> : <button className="button button-outline top-action" onClick={() => { setMode('signin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Log in</button>}
       </header>
@@ -239,7 +269,8 @@ export default function App() {
             <div className="hero-art" aria-hidden="true"><div className="art-orbit orbit-one"></div><div className="art-orbit orbit-two"></div><div className="art-heart">♥</div><span className="art-star star-one">✦</span><span className="art-star star-two">✧</span><span className="art-note note-one">your person is out there</span><span className="art-note note-two">start with a hello ♡</span></div>
           </div>
           <div className="auth-card" id="join">
-            <div className="card-heading"><span className="mini-heart">♥</span><h2>{mode === 'signup' ? 'Find your kind of love' : 'Welcome back'}</h2><p>{mode === 'signup' ? 'Your story starts with a few details.' : 'Your next chapter is waiting.'}</p></div>
+            <div className="registration-logo"><DateMeLogo /></div>
+            <div className="card-heading"><h2>{mode === 'signup' ? 'Find your kind of love' : 'Welcome back'}</h2><p>{mode === 'signup' ? 'Your story starts with a few details.' : 'Your next chapter is waiting.'}</p></div>
             <div className="auth-switch" role="tablist" aria-label="Account type"><button className={mode === 'signup' ? 'active' : ''} onClick={() => { setMode('signup'); setNotice(''); }} role="tab" aria-selected={mode === 'signup'}>Create account</button><button className={mode === 'signin' ? 'active' : ''} onClick={() => { setMode('signin'); setNotice(''); }} role="tab" aria-selected={mode === 'signin'}>Log in</button></div>
             <form onSubmit={handleAuth} className="auth-form">
               {mode === 'signup' && <><label>Your first name<input autoComplete="given-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="What should we call you?" required minLength={2} /></label><label>Your age (18+)<input type="number" inputMode="numeric" min={18} max={120} value={signupAge} onChange={(e) => setSignupAge(e.target.value)} placeholder="18 or older" required /></label></>}
@@ -297,10 +328,11 @@ export default function App() {
           {notice && session && <p className="notice member-notice" role="status">{notice}</p>}
         </section>
 
+        <section className="membership-section" id="membership-plans"><span className="eyebrow">YOUR JOURNEY, YOUR PACE</span><h2>Membership <span>plans.</span></h2><p>Choose the time period that works for you. Prices and secure payment options will be shown here once subscriptions are activated.</p><div className="plan-periods"><span>Per Week · 7 days</span><span>Per Month</span><span>3 Months</span><span>6 Months</span><span>1 Year · 12 months</span></div><small>Subscriptions are not available for purchase yet.</small></section>
         <section className="how-section" id="how-it-works"><span className="eyebrow">NOT COMPLICATED. JUST HUMAN.</span><h2>Good things start <span>simply.</span></h2><div className="steps-grid"><article><span className="step-num">01</span><div className="step-icon">✧</div><h3>Show up as you</h3><p>Create a profile that feels like you, not a highlight reel.</p></article><article><span className="step-num">02</span><div className="step-icon">♡</div><h3>Find your people</h3><p>Discover people you’d genuinely like to get to know.</p></article><article><span className="step-num">03</span><div className="step-icon">↗</div><h3>Make the first move</h3><p>A small hello can be the start of something wonderful.</p></article></div></section>
         <section className="safety-banner" id="safety"><div className="safety-symbol">♡</div><div><span className="eyebrow">ALWAYS YOUR CHOICE</span><h2>Good chemistry needs good boundaries.</h2><p>Your comfort matters. Never share private information before you’re ready, and meet new people in public places.</p></div></section>
       </main>
-      <footer><a className="brand" href="#"><span className="brand-mark">♥</span> DateMe<span className="brand-dot">.</span></a><p>Made for the moments that matter.</p><span>© {new Date().getFullYear()} DateMe</span></footer>
+      <footer><a className="brand-logo brand-logo-footer" href="#" aria-label="DateMe home"><DateMeLogo /></a><p>Made for the moments that matter.</p><span>© {new Date().getFullYear()} DateMe</span></footer>
     </div>
   );
 }
