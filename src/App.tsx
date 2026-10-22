@@ -31,6 +31,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>(demoProfiles);
   const [myProfile, setMyProfile] = useState<Profile | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [liked, setLiked] = useState<string[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -166,19 +167,35 @@ export default function App() {
     event.preventDefault();
     if (!supabase || !session || !myProfile) return;
     setBusy(true); setNotice('');
+    let photoUrl = myProfile.photo_url?.trim() || null;
+    if (photoFile) {
+      const extension = photoFile.name.split('.').pop()?.toLowerCase() || '';
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(photoFile.type) || !['jpg', 'jpeg', 'png', 'webp'].includes(extension)) {
+        setBusy(false); setNotice('Please choose a JPG, PNG or WebP image.'); return;
+      }
+      if (photoFile.size > 5 * 1024 * 1024) {
+        setBusy(false); setNotice('Your photo must be 5 MB or smaller.'); return;
+      }
+      const filePath = `${session.user.id}/${crypto.randomUUID()}.${extension === 'jpg' ? 'jpg' : extension}`;
+      const { error: uploadError } = await supabase.storage.from('dateme-avatars').upload(filePath, photoFile, { contentType: photoFile.type, upsert: false });
+      if (uploadError) { setBusy(false); setNotice('Photo upload failed. Please try another image.'); return; }
+      photoUrl = supabase.storage.from('dateme-avatars').getPublicUrl(filePath).data.publicUrl;
+    }
     const payload = {
       id: session.user.id,
       display_name: myProfile.display_name.trim(),
       age: myProfile.age,
       city: myProfile.city?.trim() || null,
       bio: myProfile.bio?.trim() || null,
-      photo_url: myProfile.photo_url?.trim() || null,
+      photo_url: photoUrl,
       updated_at: new Date().toISOString(),
     };
     const { data, error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' }).select('id, display_name, age, city, bio, photo_url').single();
     setBusy(false);
     if (error) { setNotice('Could not save your profile. Check that the database schema has been applied.'); return; }
     setMyProfile(data as Profile);
+    setPhotoFile(null);
     setProfiles((current) => current.filter((profile) => profile.id !== session.user.id));
     setNotice('Your profile has been saved.');
   }
@@ -245,7 +262,7 @@ export default function App() {
           </div></div>}
 
           {session && tab === 'profile' && myProfile && <form className="profile-editor" onSubmit={saveProfile}>
-            <div className="editor-photo">{myProfile.photo_url ? <img src={myProfile.photo_url} alt="Your profile" /> : <span>♡</span>}</div>
+            <div className="editor-photo-column"><div className="editor-photo">{myProfile.photo_url ? <img src={myProfile.photo_url} alt="Your profile" /> : <span>♡</span>}</div><label className="photo-upload-label">Upload photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const file = e.target.files?.[0] || null; setPhotoFile(file); setNotice(file ? `Selected ${file.name}. Save your profile to upload it.` : ''); }} /><small>JPG, PNG or WebP · max 5 MB</small></label></div>
             <div className="editor-fields">
               <label>Display name<input required minLength={2} maxLength={60} value={myProfile.display_name} onChange={(e) => setMyProfile({ ...myProfile, display_name: e.target.value })} placeholder="Your name" /></label>
               <label>Age (18+)<input type="number" min={18} max={120} value={myProfile.age ?? ''} onChange={(e) => setMyProfile({ ...myProfile, age: e.target.value ? Number(e.target.value) : null })} placeholder="Your age" /></label>
