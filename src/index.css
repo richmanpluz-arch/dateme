@@ -527,3 +527,15 @@ body{background:radial-gradient(ellipse at 15% 0%,rgba(200,16,46,.19),transparen
 .app-shell .brand-logo,.app-shell .top-links,.app-shell .top-links a{color:#f8f0df!important}
 .app-shell .button-outline{background:#10263b!important;color:#f8f0df!important;border-color:#b99a51!important}
 @media(max-width:680px){.app-shell .registration-page{min-height:calc(100vh - 67px)!important;padding:18px 12px 32px!important}.app-shell .registration-page .auth-card{width:100%!important;padding:22px 18px!important}}
+
+
+/* DateMe global dark surfaces: prevent legacy light styles from showing through */
+html, body, #root { background-color:#061326 !important; color:#f8f0df !important; }
+body { background-image: radial-gradient(ellipse at 50% 10%, rgba(0,105,76,.25), transparent 44%), radial-gradient(ellipse at 8% 65%, rgba(200,16,46,.18), transparent 36%), linear-gradient(145deg,#061326,#0a1e31 58%,#061326) !important; }
+.app-shell, .app-shell main, .app-shell section, .app-shell article, .app-shell .registration-page, .app-shell .portal-page, .app-shell .discover-section, .app-shell .hero, .app-shell footer { color:#f8f0df !important; }
+.app-shell .auth-card, .app-shell .portal-card, .app-shell .portal-tile, .app-shell .profile-card, .app-shell .panel, .app-shell .card, .app-shell .auth-switch, .app-shell .form-panel { background:linear-gradient(145deg,rgba(12,32,52,.97),rgba(5,20,35,.98)) !important; color:#f8f0df !important; border-color:rgba(198,164,90,.75) !important; }
+.app-shell input, .app-shell textarea, .app-shell select { background:#061326 !important; color:#fff4df !important; border-color:#456078 !important; }
+.app-shell input::placeholder, .app-shell textarea::placeholder { color:#aebdca !important; }
+.app-shell button, .app-shell a { color:inherit; }
+.app-shell .submit-button, .app-shell button[type="submit"] { background:linear-gradient(110deg,#d71937,#a90d28) !important; color:#fff !important; border:1px solid #d9b760 !important; }
+.app-shell .auth-card .brand-logo, .app-shell .auth-card h1, .app-shell .auth-card h2, .app-shell .auth-card p, .app-shell .auth-card label { color:#fff1d5 !important; }
