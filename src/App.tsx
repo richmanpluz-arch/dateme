@@ -107,21 +107,21 @@ export default function App() {
   }, [planPreferences]);
 
   function navigateTo(nextPage: typeof page) {
-    setPage(currentPage => {
-      if (currentPage !== nextPage) setPageHistory(history => [...history.slice(-19), currentPage]);
-      return nextPage;
-    });
+    if (page !== nextPage) setPageHistory([...pageHistory.slice(-19), page]);
+    setPage(nextPage);
     setMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function goBackPage() {
-    setPageHistory(history => {
-      const previousPage = history[history.length - 1];
-      if (previousPage) { setPage(previousPage); return history.slice(0, -1); }
+    const previousPage = pageHistory[pageHistory.length - 1];
+    if (previousPage) {
+      setPage(previousPage);
+      setPageHistory(pageHistory.slice(0, -1));
+    } else {
       setPage(session ? 'discover' : 'register');
-      return [];
-    });
+      setPageHistory([]);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
