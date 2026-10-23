@@ -438,3 +438,53 @@ body{background-image:radial-gradient(ellipse at 15% 15%,rgba(22,66,95,.42),tran
   .app-shell .brand-logo-small .dateme-logo-art{width:145px}
   .app-shell .registration-logo .dateme-logo-art{width:min(100%,300px)}
 }
+
+/* DateMe dark-first registration card and portal system */
+:root{color-scheme:dark;background:#061326;color:#f8f0df;--ink:#f8f0df;--muted:#bdc8d3;--rose:#c8102e;--rose-dark:#9d1027;--blush:#102a3c;--line:#294158}
+html,body,#root{min-height:100%;background:#061326!important;color:#f8f0df}
+body{background:radial-gradient(ellipse at 12% 4%,rgba(200,16,46,.2),transparent 28%),radial-gradient(ellipse at 92% 82%,rgba(0,103,71,.26),transparent 32%),linear-gradient(140deg,#061326,#0b2034 58%,#061326)!important}
+.app-shell,.app-shell.theme-rose,.app-shell.theme-green,.app-shell.theme-navy{--page-bg:#061326;--surface:#0d2035;--text-main:#f8f0df;--text-muted:#bdc8d3;--border-color:#294158;--brand-primary:#c8102e;--brand-deep:#071426;--brand-accent:#087a56;--rose:#c8102e;--rose-dark:#9d1027;--blush:#102a3c;--line:#294158;background:transparent!important;color:#f8f0df!important;min-height:100vh}
+.app-shell .topbar,.app-shell footer{background:rgba(6,19,38,.97)!important;color:#f8f0df!important;border-color:rgba(198,164,90,.35)!important}
+.app-shell .top-links,.app-shell .top-links button,.app-shell .brand,.app-shell footer p,.app-shell footer span{color:#f8f0df!important}
+.app-shell .registration-page{position:relative;isolation:isolate;min-height:calc(100vh - 78px);display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;align-content:center;gap:0;padding:clamp(20px,5vw,64px) 18px;background:radial-gradient(ellipse at 8% 12%,rgba(200,16,46,.26),transparent 32%),radial-gradient(ellipse at 94% 86%,rgba(0,103,71,.32),transparent 34%),linear-gradient(135deg,#061326 0%,#102b3a 52%,#071426 100%)!important}
+.app-shell .registration-page:before{content:"♡";position:absolute;z-index:-1;right:-2%;top:-12%;font:clamp(20rem,42vw,42rem)/1 Georgia,serif;color:rgba(248,240,223,.035);pointer-events:none}
+.app-shell .registration-page:after{content:"";position:absolute;z-index:-1;left:-12%;bottom:-22%;width:55%;height:65%;border:2px solid rgba(200,16,46,.45);border-radius:50%;transform:rotate(-18deg);box-shadow:0 -15px 0 -13px rgba(198,164,90,.65),0 -29px 0 -27px rgba(0,103,71,.8);pointer-events:none}
+.app-shell .registration-page .hero-copy{display:none}
+.app-shell .registration-page .auth-card{width:min(100%,560px);max-width:560px;justify-self:center;margin:0 auto;background:linear-gradient(150deg,rgba(15,35,56,.98),rgba(7,23,41,.99))!important;color:#f8f0df!important;border:1px solid rgba(198,164,90,.72)!important;border-top:6px solid #c8102e!important;border-bottom:3px solid #087a56!important;border-radius:26px!important;box-shadow:0 28px 85px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.04)!important;padding:clamp(20px,4vw,38px)!important}
+.app-shell .registration-page .card-heading h2,.app-shell .registration-page .card-heading p{color:#f8f0df!important}
+.app-shell .registration-page .card-heading p,.app-shell .registration-page .terms{color:#bdc8d3!important}
+.app-shell .registration-page .auth-switch{background:#061326!important;border:1px solid rgba(198,164,90,.35)!important}
+.app-shell .registration-page .auth-switch button{color:#bdc8d3!important}
+.app-shell .registration-page .auth-switch button.active{background:linear-gradient(110deg,#087a56,#07513f)!important;color:#fff7e8!important;box-shadow:0 3px 12px rgba(0,0,0,.25)!important}
+.app-shell .auth-form label{color:#f8f0df!important}
+.app-shell .auth-form input,.app-shell .password-field input{background:#061326!important;color:#fff4df!important;border:1px solid #344b61!important}
+.app-shell .auth-form input::placeholder{color:#8998a8!important}
+.app-shell .auth-form input:focus{border-color:#c6a45a!important;box-shadow:0 0 0 3px rgba(198,164,90,.15)!important}
+.app-shell .password-field{display:flex;align-items:stretch;gap:8px}
+.app-shell .password-field input{flex:1;min-width:0}
+.app-shell .password-toggle{flex:0 0 66px;border:1px solid #c6a45a!important;border-radius:10px;background:#102a3c!important;color:#f8f0df!important;font-weight:700;font-size:.76rem}
+.app-shell .forgot-password{border:0;background:transparent;color:#f0c86d;text-decoration:underline;text-underline-offset:3px;font-size:.78rem;font-weight:700;justify-self:center;padding:5px}
+.app-shell .registration-page .button-primary{background:linear-gradient(100deg,#c8102e,#951027)!important;color:#fff8eb!important;border:1px solid rgba(198,164,90,.45)!important;box-shadow:0 10px 25px rgba(200,16,46,.22)!important}
+.app-shell .notice{background:#281a2a!important;color:#ffe8dc!important;border:1px solid rgba(200,16,46,.45)}
+.app-shell .setup-hint{background:#102a3c!important;color:#d4dce4!important;border:1px solid #294158}
+.app-shell .discover-section,.app-shell .how-section,.app-shell .membership-section,.app-shell .safety-banner,.app-shell .portal-page{background:#08172a!important;color:#f8f0df!important;border-color:#294158!important}
+.app-shell .auth-card,.app-shell .plan-detail,.app-shell .steps-grid article,.app-shell .person-card,.app-shell .profile-editor,.app-shell .empty-state,.app-shell .profile-setup,.app-shell .admin-report,.app-shell .chat-panel,.app-shell .match-list,.app-shell .chat-placeholder{background:#0d2035!important;color:#f8f0df!important;border-color:#294158!important}
+.app-shell .person-info h3,.app-shell .person-info,.app-shell .admin-report-heading strong,.app-shell .member-bar,.app-shell .member-bar strong,.app-shell .plan-detail h3{color:#f8f0df!important}
+.app-shell .person-bio,.app-shell .empty-state p,.app-shell .profile-setup p,.app-shell .steps-grid p,.app-shell .safety-banner p,.app-shell .section-heading p{color:#bdc8d3!important}
+.app-shell .portal-menu{background:linear-gradient(145deg,#071629,#102a40 58%,#09271f)!important;border:1px solid #c6a45a!important;border-top:5px solid #c8102e!important}
+.app-shell .portal-menu button{background:linear-gradient(100deg,#0e273b,#081c2c)!important;color:#fff3df!important;border:1px solid rgba(198,164,90,.36)!important;box-shadow:inset 3px 0 #087a56!important}
+.app-shell .portal-menu button:after{content:"♥ ♥ ♥";color:#ed2345;font-size:10px;letter-spacing:2px;margin-left:10px}
+.app-shell .portal-toggle,.app-shell .top-action.button-outline,.app-shell .portal-page-actions button,.app-shell .button-outline{background:#0d2035!important;color:#f8f0df!important;border-color:#c6a45a!important}
+.app-shell .portal-toggle span{background:#f8f0df!important}
+.app-shell .member-tabs button,.app-shell .plan-period,.app-shell .say-hello,.app-shell .discover-search,.app-shell .profile-editor input,.app-shell .profile-editor textarea,.app-shell .profile-editor select,.app-shell .editor-fields select{background:#061326!important;color:#f8f0df!important;border-color:#294158!important}
+.app-shell .plan-period.selected,.app-shell .member-tabs button.selected{background:#0d4035!important;color:#f8f0df!important;border-color:#087a56!important}
+.app-shell .chat-messages{background:#061326!important}
+.app-shell .message-bubble{background:#10263b!important;color:#f8f0df!important;border-color:#294158!important}
+.app-shell .message-bubble.mine{background:#3b1826!important;color:#fff0df!important;border-color:#783041!important}
+.app-shell .profile-number{background:#c6a45a!important;color:#071426!important}
+.app-shell .status-resolved{background:#123d35!important;color:#bde5cf!important}
+.app-shell .status-dismissed{background:#253247!important;color:#d9dfeb!important}
+.app-shell .brand-logo-small,.app-shell .brand-logo-footer,.app-shell .registration-logo{background:transparent!important}
+.app-shell .registration-logo{width:min(100%,320px)!important}
+.app-shell .registration-logo .dateme-logo-art{mix-blend-mode:normal!important;filter:drop-shadow(0 5px 12px rgba(0,0,0,.35))!important;max-height:none!important}
+@media(max-width:680px){.app-shell .registration-page{min-height:calc(100vh - 67px);padding:20px 14px 36px}.app-shell .registration-page .auth-card{padding:22px 18px!important;border-radius:21px!important}.app-shell .registration-logo{width:min(100%,260px)!important}.app-shell .portal-menu{width:min(88vw,390px)!important}}
