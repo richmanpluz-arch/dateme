@@ -88,6 +88,7 @@ export default function App() {
   const [safetyEvents, setSafetyEvents] = useState<Array<{ id: string; user_id: string; original_message: string; detected_reasons: string[]; strike_number: number; action_taken: string; created_at: string }>>([]);
   const [safetyStatus, setSafetyStatus] = useState<Array<{ user_id: string; strike_count: number; suspended_until: string | null; updated_at: string }>>([]);
   const [affiliateCode, setAffiliateCode] = useState('');
+  const [referralInput, setReferralInput] = useState(() => new URLSearchParams(window.location.search).get('ref') || localStorage.getItem('dateme-pending-referral') || '');
   const [affiliateReferrals, setAffiliateReferrals] = useState<Array<{ id: string; referred_user_id: string; status: string; qualifying_minutes_today: number; promo_ends_at: string | null; created_at: string }>>([]);
   const [affiliateActivitySeconds, setAffiliateActivitySeconds] = useState(0);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{ plan_code: string; status: string; ends_at: string | null; payment_verified: boolean; promo_chat_until: string | null } | null>(null);
@@ -315,6 +316,17 @@ export default function App() {
         if (error) throw error;
         setNotice('If an account exists for that email, a password reset link has been sent. Check your inbox.');
       } else if (mode === 'signup') {
+        const enteredReferral = referralInput.trim();
+        if (enteredReferral) {
+          let referralCode = enteredReferral;
+          try {
+            const parsed = new URL(enteredReferral);
+            referralCode = parsed.searchParams.get('ref') || enteredReferral;
+          } catch {
+            referralCode = enteredReferral.replace(/^ref=/i, '').trim();
+          }
+          if (referralCode) localStorage.setItem('dateme-pending-referral', referralCode);
+        }
         const age = Number(signupAge);
         if (!Number.isInteger(age) || age < 18 || age > 120) throw new Error('DateMe is for adults aged 18 and over. Please enter a valid age.');
         if (displayName.trim().length < 2) throw new Error('Please enter a name with at least 2 characters.');
@@ -588,7 +600,7 @@ export default function App() {
             <div className="card-heading"><h2>{mode === 'signup' ? 'Create your DateMe account' : mode === 'forgot' ? 'Reset your password' : 'Welcome back'}</h2><p>{mode === 'signup' ? 'Your story starts with a few details.' : mode === 'forgot' ? 'We’ll email you a secure reset link.' : 'Your next chapter is waiting.'}</p></div>
             <div className="auth-switch" role="tablist" aria-label="Account type"><button className={mode === 'signup' ? 'active' : ''} onClick={() => { setMode('signup'); setNotice(''); }} role="tab" aria-selected={mode === 'signup'}>Create account</button><button className={mode === 'signin' ? 'active' : ''} onClick={() => { setMode('signin'); setNotice(''); }} role="tab" aria-selected={mode === 'signin'}>Log in</button></div>
             <form onSubmit={handleAuth} className="auth-form">
-              {mode === 'signup' && <><label>Full name<input autoComplete="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your full name" required minLength={2} maxLength={100} /></label><label>Your age (18+)<input type="number" inputMode="numeric" min={18} max={120} value={signupAge} onChange={(e) => setSignupAge(e.target.value)} placeholder="18 or older" required /></label></>}
+              {mode === 'signup' && <><label>Full name<input autoComplete="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your full name" required minLength={2} maxLength={100} /></label><label>Your age (18+)<input type="number" inputMode="numeric" min={18} max={120} value={signupAge} onChange={(e) => setSignupAge(e.target.value)} placeholder="18 or older" required /></label><label>Referral link or code (optional)<input autoComplete="off" value={referralInput} onChange={(e) => setReferralInput(e.target.value)} placeholder="Paste a DateMe referral link or code" aria-describedby="referral-help" /></label><small id="referral-help">Invited by a DateMe member? Paste their full link or referral code here.</small></>}
               <label>Email address<input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required /></label>
               <>{mode !== 'forgot' && <label>Password<div className="password-field"><input type={showPassword ? 'text' : 'password'} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" minLength={8} required /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? 'Hide' : 'Show'}</button></div></label>}
               <button className="button button-primary submit-button" type="submit" disabled={busy || checkingSession}>{busy ? 'Please wait…' : mode === 'signup' ? 'Create my account' : mode === 'forgot' ? 'Send reset link' : 'Log in'} <span>→</span></button>
