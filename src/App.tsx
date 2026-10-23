@@ -65,7 +65,7 @@ export default function App() {
   const [signupAge, setSignupAge] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
-  const [profiles, setProfiles] = useState<Profile[]>(demoProfiles);
+  const [profiles, setProfiles] = useState<Profile[]>(aiProfiles);
   const [myProfile, setMyProfile] = useState<Profile | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [liked, setLiked] = useState<string[]>([]);
@@ -138,7 +138,7 @@ export default function App() {
   useEffect(() => {
     if (!supabase || !session?.user) {
       setMyProfile(null); setMatches([]); setLiked([]); setMessages([]);
-      setProfiles(demoProfiles);
+      setProfiles(aiProfiles);
       return;
     }
     let cancelled = false;
