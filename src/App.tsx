@@ -92,6 +92,10 @@ export default function App() {
   const [reportsLoading, setReportsLoading] = useState(false);
   const [safetyEvents, setSafetyEvents] = useState<Array<{ id: string; user_id: string; original_message: string; detected_reasons: string[]; strike_number: number; action_taken: string; created_at: string }>>([]);
   const [safetyStatus, setSafetyStatus] = useState<Array<{ user_id: string; strike_count: number; suspended_until: string | null; updated_at: string }>>([]);
+  const [affiliateCode, setAffiliateCode] = useState('');
+  const [affiliateReferrals, setAffiliateReferrals] = useState<Array<{ id: string; referred_user_id: string; status: string; qualifying_minutes_today: number; promo_ends_at: string | null; created_at: string }>>([]);
+  const [affiliateActivitySeconds, setAffiliateActivitySeconds] = useState(0);
+  const referralCodeFromUrl = new URLSearchParams(window.location.search).get('ref');
 
   useEffect(() => {
     if (session?.user) setPage('discover');
@@ -513,6 +517,16 @@ export default function App() {
             <button className={tab === 'profile' ? 'selected' : ''} onClick={() => { setTab('profile'); setActiveMatchId(''); }}>My profile</button>
           </div></div>}
 
+          {session && tab === 'profile' && <section className="profile-editor affiliate-panel">
+            <div className="editor-fields">
+              <h2>Your affiliate link</h2>
+              <p>Invite people to DateMe with your personal referral link. This promotion is being rolled out; rewards and unlimited-chat eligibility are subject to the activity and subscription rules.</p>
+              {affiliateCode ? <><label>Your personal link<input readOnly value={`${window.location.origin}/?ref=${affiliateCode}`} /></label><button className="button button-primary" type="button" onClick={() => { void navigator.clipboard?.writeText(`${window.location.origin}/?ref=${affiliateCode}`).then(() => setNotice('Your affiliate link has been copied.')).catch(() => setNotice('Copy failed. Please copy the link manually.')); }}>Copy my affiliate link</button><p>Referral code: <strong>{affiliateCode}</strong></p></> : <p>Generating your personal referral link…</p>}
+              <h3>Your referrals ({affiliateReferrals.length})</h3>
+              {affiliateReferrals.length === 0 ? <p>No referrals yet. Share your link to invite your first member.</p> : affiliateReferrals.map((referral) => <div className="report-row" key={referral.id}><strong>{referral.status}</strong><span>{referral.qualifying_minutes_today || 0} qualifying minutes today</span><small>Joined {new Date(referral.created_at).toLocaleDateString()}</small>{referral.promo_ends_at && <small>Promotion ends {new Date(referral.promo_ends_at).toLocaleString()}</small>}</div>)}
+              <p>Qualifying chat activity today: {Math.floor(affiliateActivitySeconds / 60)} minutes / 120 minutes. Activity is counted only while you are signed in, the app is visible, and a matched conversation is open.</p>
+            </div>
+          </section>}
           {session && tab === 'profile' && myProfile && <form className="profile-editor" onSubmit={saveProfile}>
             <div className="editor-photo-column"><div className="editor-photo">{myProfile.photo_url ? <img src={myProfile.photo_url} alt="Your profile" /> : <span>♡</span>}</div><label className="photo-upload-label">Upload photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const file = e.target.files?.[0] || null; setPhotoFile(file); setNotice(file ? `Selected ${file.name}. Save your profile to upload it.` : ''); }} /><small>JPG, PNG or WebP · max 5 MB</small></label></div>
             <div className="editor-fields">
