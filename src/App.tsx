@@ -109,6 +109,67 @@ export default function App() {
     supabase.from('admin_users').select('user_id').eq('user_id', session.user.id).maybeSingle()
       .then(({ data }) => setIsAdmin(Boolean(data)));
   }, [session?.user?.id]);
+  
+  useEffect(() => {
+    if (!supabase || !session?.user) {
+      setAffiliateCode('');
+      setAffiliateReferrals([]);
+      setAffiliateActivitySeconds(0);
+      setSubscriptionInfo(null);
+      return;
+    }
+    let cancelled = false;
+    const userId = session.user.id;
+    const pendingKey = 'dateme-pending-referral';
+    const params = new URLSearchParams(window.location.search);
+    const referralFromUrl = params.get('ref');
+    const storedReferral = localStorage.getItem(pendingKey);
+    const referralCode = referralFromUrl || storedReferral;
+    const loadMemberData = async () => {
+      const [account, referrals, activity, subscription] = await Promise.all([
+        supabase.from('affiliate_accounts').select('referral_code').eq('user_id', userId).maybeSingle(),
+        supabase.from('affiliate_referrals').select('id,referred_user_id,status,qualifying_minutes_today,promo_ends_at,created_at').eq('referrer_id', userId).order('created_at', { ascending: false }).limit(100),
+        supabase.from('affiliate_activity_daily').select('qualifying_seconds').eq('user_id', userId).eq('activity_date', new Date().toISOString().slice(0, 10)).maybeSingle(),
+        supabase.from('member_subscriptions').select('plan_code,status,ends_at,payment_verified,promo_chat_until').eq('user_id', userId).maybeSingle(),
+      ]);
+      if (cancelled) return;
+      if (account.data?.referral_code) setAffiliateCode(account.data.referral_code);
+      if (!account.data && account.error) setNotice('Your affiliate account is still being prepared. Refresh your profile shortly.');
+      setAffiliateReferrals((referrals.data || []) as typeof affiliateReferrals);
+      setAffiliateActivitySeconds(activity.data?.qualifying_seconds || 0);
+      if (subscription.data) setSubscriptionInfo(subscription.data as typeof subscriptionInfo);
+      if (referralCode) {
+        const { error } = await supabase.rpc('attach_affiliate_referral', { p_referral_code: referralCode });
+        if (!error) {
+          localStorage.removeItem(pendingKey);
+          if (referralFromUrl) {
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('ref');
+            window.history.replaceState({}, '', cleanUrl.toString());
+          }
+        } else if (referralFromUrl) {
+          localStorage.setItem(pendingKey, referralCode);
+        }
+      }
+    };
+    void loadMemberData();
+    return () => { cancelled = true; };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!supabase || !session?.user || page !== 'discover' || tab !== 'matches' || !activeMatchId || document.visibilityState !== 'visible') return;
+    let cancelled = false;
+    const heartbeat = async () => {
+      const { data, error } = await supabase.rpc('record_affiliate_heartbeat');
+      if (cancelled || error) return;
+      const seconds = Number((data as { qualifying_seconds_today?: number } | null)?.qualifying_seconds_today);
+      if (Number.isFinite(seconds)) setAffiliateActivitySeconds(seconds);
+    };
+    void heartbeat();
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void heartbeat(); }, 60000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [session?.user?.id, page, tab, activeMatchId]);
+
 
   useEffect(() => {
     if (!supabase || !session?.user || !isAdmin || page !== 'admin') return;
