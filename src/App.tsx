@@ -90,6 +90,8 @@ export default function App() {
   const [blockedIds, setBlockedIds] = useState<string[]>([]);
   const [adminReports, setAdminReports] = useState<Array<{ id: string; reporter_id: string; reported_user_id: string; reason: string; details: string | null; status: string; created_at: string }>>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
+  const [safetyEvents, setSafetyEvents] = useState<Array<{ id: string; user_id: string; original_message: string; detected_reasons: string[]; strike_number: number; action_taken: string; created_at: string }>>([]);
+  const [safetyStatus, setSafetyStatus] = useState<Array<{ user_id: string; strike_count: number; suspended_until: string | null; updated_at: string }>>([]);
 
   useEffect(() => {
     if (session?.user) setPage('discover');
@@ -106,13 +108,20 @@ export default function App() {
     if (!supabase || !session?.user || !isAdmin || page !== 'admin') return;
     let cancelled = false;
     setReportsLoading(true);
-    supabase.from('member_reports').select('id, reporter_id, reported_user_id, reason, details, status, created_at').order('created_at', { ascending: false }).limit(100)
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) setNotice('Could not load reports. Please check administrator policies.');
-        else setAdminReports((data || []) as typeof adminReports);
-        setReportsLoading(false);
-      });
+    Promise.all([
+      supabase.from('member_reports').select('id, reporter_id, reported_user_id, reason, details, status, created_at').order('created_at', { ascending: false }).limit(100),
+      supabase.from('member_safety_events').select('id, user_id, original_message, detected_reasons, strike_number, action_taken, created_at').order('created_at', { ascending: false }).limit(200),
+      supabase.from('member_safety_status').select('user_id, strike_count, suspended_until, updated_at').order('updated_at', { ascending: false }).limit(200),
+    ]).then(([reports, events, statuses]) => {
+      if (cancelled) return;
+      if (reports.error) setNotice('Could not load reports. Please check administrator policies.');
+      else setAdminReports((reports.data || []) as typeof adminReports);
+      if (events.error) setNotice('Safety history could not be loaded. Check administrator policies.');
+      else setSafetyEvents((events.data || []) as typeof safetyEvents);
+      if (statuses.error) setNotice('Safety status could not be loaded. Check administrator policies.');
+      else setSafetyStatus((statuses.data || []) as typeof safetyStatus);
+      setReportsLoading(false);
+    });
     return () => { cancelled = true; };
   }, [session?.user?.id, isAdmin, page]);
 
@@ -349,8 +358,8 @@ export default function App() {
     event.preventDefault();
     const body = messageText.trim();
     if (!body || body.length > 2000) return;
-    if (contactPattern.test(body)) {
-      setNotice('Message blocked: phone numbers, external links, social handles and requests to move off DateMe are not allowed. Repeated attempts may trigger a temporary safety freeze.');
+    if (!session && contactPattern.test(body)) {
+      setNotice('********* Message hidden: phone numbers, emails, links and social/contact details are not allowed in DateMe chat. Repeated attempts may suspend your account for 24 hours. This is a demo chat.');
       return;
     }
     if (!session && demoChatPerson) {
@@ -372,8 +381,15 @@ export default function App() {
     const { data: blockRows } = await supabase.from('member_blocks').select('id').or(`and(blocker_id.eq.${session.user.id},blocked_user_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_user_id.eq.${session.user.id})`).limit(1);
     if (blockRows?.length) { setNotice('Messaging is unavailable because one of these accounts has blocked the other.'); return; }
     const { data, error } = await supabase.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
-    if (error) { setNotice('Message could not be sent. Messaging is only available to matched members.'); return; }
-    if (data) setMessages((current) => current.some((item) => item.id === data.id) ? current : [...current, data as Message]);
+    if (error) {
+      if (error.message?.includes('ACCOUNT_SUSPENDED_24H')) setNotice('Your account has been suspended for 24 hours. Contact the DateMe administrator.');
+      else setNotice('Message could not be sent. Messaging is only available to matched members.');
+      return;
+    }
+    if (data) {
+      setMessages((current) => current.some((item) => item.id === data.id) ? current : [...current, data as Message]);
+      if (data.body === '*********') setNotice('********* Your message contained blocked contact details or suspicious number/link patterns. It was replaced with asterisks. Repeated attempts may suspend your account for 24 hours. Contact the administrator if suspended.');
+    }
     setMessageText(''); setReplyTo(null); setShowEmojiPicker(false);
   }
 
@@ -544,7 +560,7 @@ export default function App() {
         </section>}
 
         {page === 'plans' && <section className="portal-page membership-section" id="membership-plans"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">YOUR JOURNEY, YOUR PACE</span><h2>Membership <span>plans.</span></h2><p>Choose a period to review its draft price and proposed benefits. Benefits below are the proposed tier design. Prices, exact media limits and payment setup still need final configuration.</p><div className="plan-periods">{[{id:'week',label:'Per Week',period:'7 days'},{id:'month',label:'Per Month',period:'1 month'},{id:'quarter',label:'3 Months',period:'3 months'},{id:'half',label:'6 Months',period:'6 months'},{id:'year',label:'1 Year',period:'12 months'}].map(plan => <button key={plan.id} className={selectedPlan===plan.id?'plan-period selected':'plan-period'} onClick={() => setSelectedPlan(plan.id)}>{plan.label}<small>{plan.period}</small></button>)}</div><div className="plan-detail"><span className="draft-label">DRAFT · NOT FOR SALE</span><h3>{{week:'Per Week · 7 days',month:'Per Month',quarter:'3 Months',half:'6 Months',year:'1 Year · 12 months'}[selectedPlan]}</h3><div className="draft-price">Price: <strong>To be decided</strong></div><h4>Proposed benefits to discuss</h4><ul><li>Create and edit your dating profile</li><li>Discover member profiles and send likes</li><li>Report and block inappropriate behaviour.</li>{selectedPlan==='week' && <li>Basic text chat only in this draft tier.</li>}{selectedPlan==='month' && <li>Text chat and limited photo sharing (proposed).</li>}{selectedPlan==='quarter' && <li>Text chat and photo sharing; video-sharing limits to be defined.</li>}{selectedPlan==='half' && <li>Text, photo and limited video sharing; proposed in-app voice calls. No video calling.</li>}{selectedPlan==='year' && <><li>Text messages, photo and video sharing, subject to safety and file-size limits.</li><li>In-app voice calls and video calling with mutual matches.</li><li>Included message allowance; final fair-use limit to be defined.</li></>}</ul><p>Payments are not enabled. No subscription can be purchased from this page yet.</p></div></section>}
-        {page === 'admin' && <section className="portal-page membership-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">OWNER ACCESS</span><h2>Administrator <span>portal.</span></h2>{isAdmin ? <div className="plan-detail"><h3>Admin access verified</h3><p>Signed in as {session?.user.email}. The secure admin area is reserved for accounts granted access in the database.</p><p>Review member safety reports and update their status below. Member access and account suspension controls are not enabled yet.</p><div className="admin-report-list"><h3>Member safety reports</h3>{reportsLoading ? <p>Loading reports…</p> : adminReports.length === 0 ? <p>No reports have been submitted.</p> : adminReports.map(report => <article className="admin-report" key={report.id}><div className="admin-report-heading"><strong>{report.reason || 'Member report'}</strong><span className={'report-status status-' + report.status}>{report.status}</span></div><p>{report.details || 'No extra details provided.'}</p><small>Reported member: {report.reported_user_id} · Submitted: {new Date(report.created_at).toLocaleString()}</small><div className="admin-report-actions"><button onClick={() => void updateReportStatus(report.id, 'reviewing')}>Mark reviewing</button><button onClick={() => void updateReportStatus(report.id, 'resolved')}>Resolve</button><button onClick={() => void updateReportStatus(report.id, 'dismissed')}>Dismiss</button></div></article>)}</div></div> : <div className="plan-detail"><h3>Restricted access</h3><p>Your account has not been granted administrator privileges. For security, admin access cannot be self-assigned from this public page.</p><p>We can set up your owner account through a secure, private admin grant after you confirm the account email you want to use.</p></div>}</section>}
+        {page === 'admin' && <section className="portal-page membership-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">OWNER ACCESS</span><h2>Administrator <span>portal.</span></h2>{isAdmin ? <div className="plan-detail"><h3>Admin access verified</h3><p>Signed in as {session?.user.email}. The secure admin area is reserved for accounts granted access in the database.</p><p>Review member reports, contact-sharing violations, strike history, and 24-hour suspensions below. Messages containing detected contact details are stored as asterisks for other members; the restricted safety log preserves the original message for administrator review.</p><div className="admin-report-list"><h3>Safety history &amp; suspensions</h3>{reportsLoading ? <p>Loading safety history…</p> : safetyEvents.length === 0 ? <p>No contact-sharing violations recorded.</p> : safetyEvents.map(item => <article className="admin-report" key={item.id}><div className="admin-report-heading"><strong>{item.action_taken === 'suspended_24h' ? '24-hour suspension applied' : 'Message redacted · warning issued'}</strong><span className={'report-status ' + (item.action_taken === 'suspended_24h' ? 'status-open' : 'status-reviewing')}>Strike {item.strike_number}</span></div><p><strong>Original message (admin only):</strong> {item.original_message}</p><p><strong>Detection reasons:</strong> {item.detected_reasons.join(', ')}</p><small>Member ID: {item.user_id} · {new Date(item.created_at).toLocaleString()}</small></article>)}<h3>Current safety status</h3>{safetyStatus.length === 0 ? <p>No safety status records yet.</p> : safetyStatus.map(item => <article className="admin-report" key={item.user_id}><strong>Member ID: {item.user_id}</strong><p>Recent strikes: {item.strike_count}</p><p>Suspended until: {item.suspended_until ? new Date(item.suspended_until).toLocaleString() : 'Not currently suspended'}</p><small>Last updated: {new Date(item.updated_at).toLocaleString()}</small></article>)}</div><div className="admin-report-list"><h3>Member safety reports</h3>{reportsLoading ? <p>Loading reports…</p> : adminReports.length === 0 ? <p>No reports have been submitted.</p> : adminReports.map(report => <article className="admin-report" key={report.id}><div className="admin-report-heading"><strong>{report.reason || 'Member report'}</strong><span className={'report-status status-' + report.status}>{report.status}</span></div><p>{report.details || 'No extra details provided.'}</p><small>Reported member: {report.reported_user_id} · Submitted: {new Date(report.created_at).toLocaleString()}</small><div className="admin-report-actions"><button onClick={() => void updateReportStatus(report.id, 'reviewing')}>Mark reviewing</button><button onClick={() => void updateReportStatus(report.id, 'resolved')}>Resolve</button><button onClick={() => void updateReportStatus(report.id, 'dismissed')}>Dismiss</button></div></article>)}</div></div> : <div className="plan-detail"><h3>Restricted access</h3><p>Your account has not been granted administrator privileges. For security, admin access cannot be self-assigned from this public page.</p><p>We can set up your owner account through a secure, private admin grant after you confirm the account email you want to use.</p></div>}</section>}
         {page === 'how' && <section className="portal-page how-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">NOT COMPLICATED. JUST HUMAN.</span><h2>Good things start <span>simply.</span></h2><div className="steps-grid"><article><span className="step-num">01</span><h3>Show up as you</h3><p>Create a profile that feels like you.</p></article><article><span className="step-num">02</span><h3>Find your people</h3><p>Discover people you would like to know.</p></article><article><span className="step-num">03</span><h3>Make the first move</h3><p>A kind hello can start a conversation.</p></article></div></section>}
         {page === 'safety' && <section className="portal-page how-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">ALWAYS YOUR CHOICE</span><h2>Safety <span>centre.</span></h2><p>Protect your personal details, take your time getting to know people, and meet in public places. Report suspicious or abusive behaviour. Never send phone numbers, external links, social handles or contact details in chat. Repeated attempts may be blocked and trigger a temporary account freeze and safety review. Never send money to someone you have not met. Meet in public, tell a trusted person where you are going, and report or block anyone who makes you uncomfortable.</p></section>}
 
