@@ -488,3 +488,17 @@ body{background:radial-gradient(ellipse at 12% 4%,rgba(200,16,46,.2),transparent
 .app-shell .registration-logo{width:min(100%,320px)!important}
 .app-shell .registration-logo .dateme-logo-art{mix-blend-mode:normal!important;filter:drop-shadow(0 5px 12px rgba(0,0,0,.35))!important;max-height:none!important}
 @media(max-width:680px){.app-shell .registration-page{min-height:calc(100vh - 67px);padding:20px 14px 36px}.app-shell .registration-page .auth-card{padding:22px 18px!important;border-radius:21px!important}.app-shell .registration-logo{width:min(100%,260px)!important}.app-shell .portal-menu{width:min(88vw,390px)!important}}
+
+/* Remove remaining light surfaces from interior pages */
+.app-shell .like-button,.app-shell .message-actions button,.app-shell .reply-reference,.app-shell .voice-preview button,.app-shell .emoji-picker,.app-shell .emoji-picker button,.app-shell .chat-tool-button,.app-shell .discover-search button,.app-shell .profile-safety-actions button,.app-shell .portal-page-actions button,.app-shell .admin-report-actions button{background:#10263b!important;color:#f8f0df!important;border-color:#365269!important}
+.app-shell .person-photo-wrap,.app-shell .photo-placeholder,.app-shell .editor-photo{background:linear-gradient(145deg,#102c42,#0c382f)!important}
+.app-shell .like-button.liked{background:#c8102e!important;color:#fff!important}
+.app-shell .interest-chips span,.app-shell .profile-prompt,.app-shell .reply-composer,.app-shell .voice-preview,.app-shell .chat-tools-note,.app-shell .emoji-picker{background:#102a3c!important;color:#dce5ed!important;border-color:#294158!important}
+.app-shell .profile-number{background:#c6a45a!important;color:#071426!important}
+.app-shell .empty-state,.app-shell .profile-setup,.app-shell .discover-search,.app-shell .profile-editor,.app-shell .admin-report-list,.app-shell .match-list,.app-shell .chat-panel,.app-shell .chat-placeholder{background:#0d2035!important;color:#f8f0df!important;border-color:#294158!important}
+.app-shell .editor-fields label,.app-shell .auth-form label{color:#f8f0df!important}
+.app-shell .editor-fields input,.app-shell .editor-fields textarea,.app-shell .editor-fields select,.app-shell .discover-search input,.app-shell .chat-compose input{background:#061326!important;color:#f8f0df!important;border-color:#365269!important}
+.app-shell .say-hello{background:#102d2a!important;color:#c2ead4!important;border-color:#28664e!important}
+.app-shell .setup-hint,.app-shell .notice{border-radius:12px}
+.app-shell .admin-report-actions button:hover,.app-shell .portal-menu button:hover{border-color:#c6a45a!important;background:#123d35!important}
+.app-shell .status-reviewing{background:#3c2d14!important;color:#f5d78d!important}
