@@ -117,7 +117,8 @@ export default function App() {
     Promise.all([
       supabase.from('member_reports').select('id, reporter_id, reported_user_id, reason, details, status, created_at').order('created_at', { ascending: false }).limit(100),
       supabase.from('member_safety_events').select('id, user_id, original_message, detected_reasons, strike_number, action_taken, created_at').order('created_at', { ascending: false }).limit(200),
-      supabase.from('member_safety_status').select('user_id, strike_count, suspended_until, updated_at').order('updated_at', { ascending: false }).limit(200),\n      supabase.from('member_subscriptions').select('user_id,plan_code,status,created_at,payment_verified').eq('status','pending').order('created_at',{ascending:false}).limit(200),
+      supabase.from('member_safety_status').select('user_id, strike_count, suspended_until, updated_at').order('updated_at', { ascending: false }).limit(200),
+      supabase.from('member_subscriptions').select('user_id,plan_code,status,created_at,payment_verified').eq('status','pending').order('created_at',{ascending:false}).limit(200),
     ]).then(([reports, events, statuses, subscriptions]) => {
       if (cancelled) return;
       if (reports.error) setNotice('Could not load reports. Please check administrator policies.');
@@ -125,7 +126,8 @@ export default function App() {
       if (events.error) setNotice('Safety history could not be loaded. Check administrator policies.');
       else setSafetyEvents((events.data || []) as typeof safetyEvents);
       if (statuses.error) setNotice('Safety status could not be loaded. Check administrator policies.');
-      else setSafetyStatus((statuses.data || []) as typeof safetyStatus);\n      if (!subscriptions.error) setAdminSubscriptions((subscriptions.data || []) as typeof adminSubscriptions);
+      else setSafetyStatus((statuses.data || []) as typeof safetyStatus);
+      if (!subscriptions.error) setAdminSubscriptions((subscriptions.data || []) as typeof adminSubscriptions);
       setReportsLoading(false);
     });
     return () => { cancelled = true; };
@@ -450,7 +452,8 @@ export default function App() {
   }
 
   async function sendVoiceNote() {
-    if (!supabase || !session || !activeMatchId || !voiceBlob) return;\n    if (!await hasPaidMediaAccess()) { setNotice('Voice notes require both matched members to have the same active, verified paid subscription tier.'); return; }
+    if (!supabase || !session || !activeMatchId || !voiceBlob) return;
+    if (!await hasPaidMediaAccess()) { setNotice('Voice notes require both matched members to have the same active, verified paid subscription tier.'); return; }
     if (voiceBlob.size > 5 * 1024 * 1024) {
       setNotice('That voice note is too large. Please record a shorter note (maximum 5 MB).');
       return;
