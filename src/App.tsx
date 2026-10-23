@@ -18,11 +18,6 @@ type Profile = {
 type Match = { id: string; user_one: string; user_two: string; created_at: string };
 type Message = { id: string; match_id: string; sender_id: string; body: string; created_at: string; expires_at?: string; reply_to?: string | null; audio_path?: string | null; demo?: boolean };
 
-const demoProfiles: Profile[] = [
-  { id: 'demo-1', display_name: 'Amara', age: 26, city: 'Johannesburg', bio: 'Sunday markets, spontaneous road trips and finding the best coffee in town.', photo_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=85' },
-  { id: 'demo-2', display_name: 'Liam', age: 29, city: 'Cape Town', bio: 'Ocean air, live music and a good laugh. Looking for something genuine.', photo_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=85' },
-  { id: 'demo-3', display_name: 'Zanele', age: 25, city: 'Pretoria', bio: 'Bookshops, hiking trails and cooking for the people I love.', photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85' },
-];
 const aiProfiles: Profile[] = [
   { id: 'ai-sarah', display_name: 'Sarah', age: 27, city: 'Johannesburg', bio: 'Coffee lover, weekend explorer and fan of honest conversations.', photo_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=85', interests: ['Coffee','Travel','Music'] },
   { id: 'ai-mia', display_name: 'Mia', age: 25, city: 'Pretoria', bio: 'Bookshops, music and trying new recipes.', photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85', interests: ['Books','Cooking','Art'] },
@@ -115,7 +110,8 @@ export default function App() {
   }, [session?.user?.id]);
   
   useEffect(() => {
-    if (!supabase || !session?.user) {
+    const client = supabase;
+    if (!client || !session?.user) {
       setAffiliateCode('');
       setAffiliateReferrals([]);
       setAffiliateActivitySeconds(0);
@@ -131,10 +127,10 @@ export default function App() {
     const referralCode = referralFromUrl || storedReferral;
     const loadMemberData = async () => {
       const [account, referrals, activity, subscription] = await Promise.all([
-        supabase.from('affiliate_accounts').select('referral_code').eq('user_id', userId).maybeSingle(),
-        supabase.from('affiliate_referrals').select('id,referred_user_id,status,qualifying_minutes_today,promo_ends_at,created_at').eq('referrer_id', userId).order('created_at', { ascending: false }).limit(100),
-        supabase.from('affiliate_activity_daily').select('qualifying_seconds').eq('user_id', userId).eq('activity_date', new Date().toISOString().slice(0, 10)).maybeSingle(),
-        supabase.from('member_subscriptions').select('plan_code,status,ends_at,payment_verified,promo_chat_until').eq('user_id', userId).maybeSingle(),
+        client.from('affiliate_accounts').select('referral_code').eq('user_id', userId).maybeSingle(),
+        client.from('affiliate_referrals').select('id,referred_user_id,status,qualifying_minutes_today,promo_ends_at,created_at').eq('referrer_id', userId).order('created_at', { ascending: false }).limit(100),
+        client.from('affiliate_activity_daily').select('qualifying_seconds').eq('user_id', userId).eq('activity_date', new Date().toISOString().slice(0, 10)).maybeSingle(),
+        client.from('member_subscriptions').select('plan_code,status,ends_at,payment_verified,promo_chat_until').eq('user_id', userId).maybeSingle(),
       ]);
       if (cancelled) return;
       if (account.data?.referral_code) setAffiliateCode(account.data.referral_code);
@@ -143,7 +139,7 @@ export default function App() {
       setAffiliateActivitySeconds(activity.data?.qualifying_seconds || 0);
       if (subscription.data) setSubscriptionInfo(subscription.data as typeof subscriptionInfo);
       if (referralCode) {
-        const { error } = await supabase.rpc('attach_affiliate_referral', { p_referral_code: referralCode });
+        const { error } = await client.rpc('attach_affiliate_referral', { p_referral_code: referralCode });
         if (!error) {
           localStorage.removeItem(pendingKey);
           if (referralFromUrl) {
