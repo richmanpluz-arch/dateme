@@ -28,7 +28,7 @@ const aiProfiles: Profile[] = [
   { id: 'ai-mia', display_name: 'Mia', age: 25, city: 'Pretoria', bio: 'Bookshops, music and trying new recipes.', photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85', interests: ['Books','Cooking','Art'] },
   { id: 'ai-james', display_name: 'James', age: 29, city: 'Cape Town', bio: 'Ocean air, live music and finding great food spots.', photo_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=85', interests: ['Ocean','Music','Food'] },
 ];
-const contactPattern = /(?:https?:\\/\\/|www\\.|\\b[a-z0-9.-]+\\.(?:com|net|org|co\\.za|io)\\b|\\b(?:whats?app|telegram|facebook|instagram|snapchat|tiktok|signal|wechat|dm me|contact me|message me outside|email me|call me|text me)\\b|(?:\\+?\\d[\\d\\s().-]{6,}\\d))/i;
+const contactPattern = /(?:https?:\/\/|www\.|\b[a-z0-9.-]+\.(?:com|net|org|co\.za|io)\b|\b(?:whats?app|telegram|facebook|instagram|snapchat|tiktok|signal|wechat|dm me|contact me|message me outside|email me|call me|text me)\b|(?:\+?\d[\d\s().-]{6,}\d))/i;
 const demoReplies = ['That sounds lovely 😊 What do you enjoy doing on a free day?', 'I like that! Tell me a little more about it.', 'A good conversation is a great start 💛 What would your ideal first date look like?', 'Nice! I would add a coffee stop to that plan ☕'];
 const emptyProfile = (id: string, name = ''): Profile => ({ id, display_name: name, age: null, city: '', bio: '', photo_url: '' });
 
