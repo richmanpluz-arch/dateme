@@ -417,7 +417,17 @@ export default function App() {
     setMessageText(''); setReplyTo(null); setShowEmojiPicker(false);
   }
 
+  async function hasPaidMediaAccess(): Promise<boolean> {
+    if (!supabase || !session || !activeMatchId) return false;
+    const { data: matchRow } = await supabase.from('matches').select('user_one,user_two').eq('id', activeMatchId).maybeSingle();
+    if (!matchRow || ![matchRow.user_one, matchRow.user_two].includes(session.user.id)) return false;
+    const otherId = matchRow.user_one === session.user.id ? matchRow.user_two : matchRow.user_one;
+    const { data: plans } = await supabase.from('member_subscriptions').select('user_id,plan_code,status,payment_verified,ends_at').in('user_id', [session.user.id, otherId]);
+    return Boolean(plans && plans.length === 2 && plans.every(p => p.status === 'active' && p.payment_verified && p.ends_at && new Date(p.ends_at).getTime() > Date.now()) && plans[0].plan_code === plans[1].plan_code);
+  }
+
   async function startVoiceRecording() {
+    if (!await hasPaidMediaAccess()) { setNotice('Voice notes require both matched members to have the same active, verified paid subscription tier.'); return; }
     if (!navigator.mediaDevices?.getUserMedia || !('MediaRecorder' in window)) { setNotice('Voice recording is not supported in this browser. Try an updated browser with microphone permission.'); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -440,7 +450,7 @@ export default function App() {
   }
 
   async function sendVoiceNote() {
-    if (!supabase || !session || !activeMatchId || !voiceBlob) return;
+    if (!supabase || !session || !activeMatchId || !voiceBlob) return;\n    if (!await hasPaidMediaAccess()) { setNotice('Voice notes require both matched members to have the same active, verified paid subscription tier.'); return; }
     if (voiceBlob.size > 5 * 1024 * 1024) {
       setNotice('That voice note is too large. Please record a shorter note (maximum 5 MB).');
       return;
