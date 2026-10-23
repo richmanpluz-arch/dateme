@@ -215,3 +215,12 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
   .auth-card { padding:20px 16px; }
   .auth-switch button { font-size:.72rem; }
 }
+
+/* Subscription plan preference controls */
+.plan-preference-controls { display: grid; gap: 12px; margin: 16px 0; }
+.plan-preference-controls label { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid #40566b; border-radius: 10px; color: var(--cream); background: #0b1d2b; font-size: .9rem; line-height: 1.45; }
+.plan-preference-controls label:has(input:checked) { border-color: var(--gold); background: #132b39; }
+.plan-preference-controls input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; margin: 2px 0 0; accent-color: var(--gold); }
+.plan-preference-controls input[type="checkbox"]:disabled { cursor: not-allowed; }
+.plan-preference-controls label:has(input:disabled) { opacity: .58; }
+.preference-save-note { margin: 2px 0 0; color: var(--muted); font-size: .8rem; }
