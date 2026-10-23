@@ -68,7 +68,7 @@ export default function App() {
   const [profiles, setProfiles] = useState<Profile[]>(aiProfiles);
   const [myProfile, setMyProfile] = useState<Profile | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [liked, setLiked] = useState<string[]>([]);
+  const [liked, setLiked] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('dateme-ai-likes') || '[]') as string[]; } catch { return []; } });
   const [matches, setMatches] = useState<Match[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState('');
@@ -137,7 +137,7 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase || !session?.user) {
-      setMyProfile(null); setMatches([]); setLiked([]); setMessages([]);
+      setMyProfile(null); setMatches([]); setLiked(() => { try { return JSON.parse(localStorage.getItem('dateme-ai-likes') || '[]') as string[]; } catch { return []; } }); setMessages([]);
       setProfiles(aiProfiles);
       return;
     }
@@ -154,7 +154,7 @@ export default function App() {
       if (cancelled) return;
       if (own.data) setMyProfile(own.data as Profile);
       else setMyProfile(emptyProfile(userId, String(session!.user.user_metadata?.display_name || '')));
-      if (people.data) setProfiles(people.data as Profile[]);
+      setProfiles([...(people.data as Profile[] || []).filter((profile) => !profile.id.startsWith('ai-')), ...aiProfiles]);
       if (sentLikes.data) setLiked(sentLikes.data.map((row) => row.liked_user_id));
       if (matchRows.data) setMatches(matchRows.data as Match[]);
       if (blocks.data) setBlockedIds(blocks.data.map((row) => row.blocker_id === userId ? row.blocked_user_id : row.blocker_id));
@@ -248,8 +248,14 @@ export default function App() {
 
   async function handleLike(profile: Profile) {
     if (!session || !supabase) {
-      setLiked((current) => current.includes(profile.id) ? current : [...current, profile.id]);
-      setNotice('Demo like saved on this screen only. Sign in to save real likes.');
+      setLiked((current) => { const next = current.includes(profile.id) ? current : [...current, profile.id]; try { localStorage.setItem('dateme-ai-likes', JSON.stringify(next.filter((id) => id.startsWith('ai-')))); } catch {} return next; });
+      setNotice('Like saved on this device.');
+      return;
+    }
+    if (profile.id.startsWith('ai-')) {
+      if (liked.includes(profile.id)) { setNotice(`You have already liked ${profile.display_name}.`); return; }
+      setLiked((current) => { const next = [...current, profile.id]; try { localStorage.setItem('dateme-ai-likes', JSON.stringify(next.filter((id) => id.startsWith('ai-')))); } catch {} return next; });
+      setNotice(`You liked ${profile.display_name}. This AI profile is a demo profile.`);
       return;
     }
     if (liked.includes(profile.id)) {
@@ -354,7 +360,9 @@ export default function App() {
       setMessageText('');
       const count = demoReplyCount + 1;
       setDemoReplyCount(count);
-      window.setTimeout(() => setDemoMessages(current => [...current, { id: crypto.randomUUID(), match_id: demoChatPerson.id, sender_id: demoChatPerson.id, body: demoReplies[(count - 1) % demoReplies.length], created_at: new Date().toISOString(), demo: true }]), 850);
+      const lower = body.toLowerCase();
+      const reply = /\b(hi|hello|hey)\b/.test(lower) ? `Hey 😊 I'm ${demoChatPerson.display_name}. How's your day going?` : /\b(work|job|career)\b/.test(lower) ? 'Tell me more about what you do. What do you enjoy most about it? 😊' : /\b(hobby|hobbies|love doing|free time)\b/.test(lower) ? 'That sounds interesting! I enjoy discovering new things too. What got you into that? 💛' : /\b(date|meet|coffee)\b/.test(lower) ? 'A relaxed coffee and a good conversation sounds lovely ☕ What kind of place do you like?' : /\b(sad|bad day|upset|stress)\b/.test(lower) ? 'I'm sorry it's been a tough one. Want to tell me what happened? I'm listening 💛' : demoReplies[(count - 1) % demoReplies.length];
+      window.setTimeout(() => setDemoMessages(current => [...current, { id: crypto.randomUUID(), match_id: demoChatPerson.id, sender_id: demoChatPerson.id, body: reply, created_at: new Date().toISOString(), demo: true }]), 850);
       return;
     }
     if (!supabase || !session || !activeMatchId) return;
