@@ -238,7 +238,7 @@ export default function App() {
     if (!supabase || !session) { setNotice('Sign in before requesting a subscription.'); return; }
     const planMap: Record<string, string> = { week: 'week', month: 'month', quarter: 'three_months', half: 'six_months', year: 'yearly' };
     const { error } = await supabase!.rpc('request_subscription_plan', { p_plan_code: planMap[selectedPlan] || 'week' });
-    if (error) { setNotice('Could not submit your plan request. Please try again.'); return; }
+    if (error) { setNotice(error.message.includes('already have an active subscription') ? 'You already have an active paid subscription. It will remain active until it expires; you cannot replace it with a new request yet.' : 'Could not submit your plan request. Please try again.'); return; }
     setNotice('Subscription request submitted. Your plan stays locked until payment is verified and an administrator approves it.');
     const { data } = await supabase!.from('member_subscriptions').select('plan_code,status,ends_at,payment_verified,promo_chat_until').eq('user_id', session.user.id).maybeSingle();
     if (data) setSubscriptionInfo(data as typeof subscriptionInfo);
@@ -246,6 +246,10 @@ export default function App() {
 
   async function reviewSubscription(userId: string, planCode: string, approve: boolean) {
     if (!supabase || !session || !isAdmin) return;
+    const confirmation = approve
+      ? `Confirm you independently verified payment for the ${planCode} plan from member ${userId}. This will activate the subscription immediately.`
+      : `Decline the ${planCode} subscription request from member ${userId}?`;
+    if (!window.confirm(confirmation)) return;
     const { error } = await supabase!.rpc('admin_set_subscription', { p_user_id: userId, p_plan_code: planCode, p_approve: approve });
     if (error) { setNotice('Subscription review failed. Check administrator permissions.'); return; }
     setAdminSubscriptions(current => current.filter(item => item.user_id !== userId));
