@@ -52,7 +52,8 @@ function DateMeLogo() {
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [checkingSession, setCheckingSession] = useState(Boolean(supabase));
-  const [mode, setMode] = useState<'signin' | 'signup'>('signup');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signup');
+  const [showPassword, setShowPassword] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [page, setPage] = useState<'register' | 'home' | 'discover' | 'plans' | 'how' | 'safety' | 'admin'>('register');
   const [selectedPlan, setSelectedPlan] = useState('week');
@@ -213,7 +214,11 @@ export default function App() {
     if (!supabase) { setNotice('Connect your Supabase project using the setup steps in README.md.'); return; }
     setBusy(true);
     try {
-      if (mode === 'signup') {
+      if (mode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/` });
+        if (error) throw error;
+        setNotice('If an account exists for that email, a password reset link has been sent. Check your inbox.');
+      } else if (mode === 'signup') {
         const age = Number(signupAge);
         if (!Number.isInteger(age) || age < 18 || age > 120) throw new Error('DateMe is for adults aged 18 and over. Please enter a valid age.');
         if (displayName.trim().length < 2) throw new Error('Please enter a name with at least 2 characters.');
@@ -458,13 +463,15 @@ export default function App() {
           </div>
           <div className="auth-card" id="join">
             <div className="registration-logo"><DateMeLogo /></div>
-            <div className="card-heading"><h2>{mode === 'signup' ? 'Find your kind of love' : 'Welcome back'}</h2><p>{mode === 'signup' ? 'Your story starts with a few details.' : 'Your next chapter is waiting.'}</p></div>
+            <div className="card-heading"><h2>{mode === 'signup' ? 'Create your DateMe account' : mode === 'forgot' ? 'Reset your password' : 'Welcome back'}</h2><p>{mode === 'signup' ? 'Your story starts with a few details.' : mode === 'forgot' ? 'We’ll email you a secure reset link.' : 'Your next chapter is waiting.'}</p></div>
             <div className="auth-switch" role="tablist" aria-label="Account type"><button className={mode === 'signup' ? 'active' : ''} onClick={() => { setMode('signup'); setNotice(''); }} role="tab" aria-selected={mode === 'signup'}>Create account</button><button className={mode === 'signin' ? 'active' : ''} onClick={() => { setMode('signin'); setNotice(''); }} role="tab" aria-selected={mode === 'signin'}>Log in</button></div>
             <form onSubmit={handleAuth} className="auth-form">
-              {mode === 'signup' && <><label>Your first name<input autoComplete="given-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="What should we call you?" required minLength={2} /></label><label>Your age (18+)<input type="number" inputMode="numeric" min={18} max={120} value={signupAge} onChange={(e) => setSignupAge(e.target.value)} placeholder="18 or older" required /></label></>}
+              {mode === 'signup' && <><label>Full name<input autoComplete="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your full name" required minLength={2} maxLength={100} /></label><label>Your age (18+)<input type="number" inputMode="numeric" min={18} max={120} value={signupAge} onChange={(e) => setSignupAge(e.target.value)} placeholder="18 or older" required /></label></>}
               <label>Email address<input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required /></label>
-              <label>Password<input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" minLength={8} required /></label>
-              <button className="button button-primary submit-button" type="submit" disabled={busy || checkingSession}>{busy ? 'Please wait…' : mode === 'signup' ? 'Create my account' : 'Log in'} <span>→</span></button>
+              <>{mode !== 'forgot' && <label>Password<div className="password-field"><input type={showPassword ? 'text' : 'password'} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" minLength={8} required /><button className="password-toggle" type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? 'Hide' : 'Show'}</button></div></label>}
+              <button className="button button-primary submit-button" type="submit" disabled={busy || checkingSession}>{busy ? 'Please wait…' : mode === 'signup' ? 'Create my account' : mode === 'forgot' ? 'Send reset link' : 'Log in'} <span>→</span></button>
+              {mode === 'signin' && <button className="forgot-password" type="button" onClick={() => { setMode('forgot'); setNotice(''); }}>Forgot password?</button>}
+              {mode === 'forgot' && <button className="forgot-password" type="button" onClick={() => { setMode('signin'); setNotice(''); }}>Back to log in</button>}</>
               <p className="terms">By continuing, you agree to treat people with kindness and respect.</p>
             </form>
             {notice && <p className="notice" role="status">{notice}</p>}
