@@ -106,7 +106,7 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase || !session?.user) { setIsAdmin(false); return; }
-    supabase.from('admin_users').select('user_id').eq('user_id', session.user.id).maybeSingle()
+    supabase!.from('admin_users').select('user_id').eq('user_id', session.user.id).maybeSingle()
       .then(({ data }) => setIsAdmin(Boolean(data)));
   }, [session?.user?.id]);
   
@@ -161,7 +161,7 @@ export default function App() {
     if (!supabase || !session?.user || page !== 'discover' || tab !== 'matches' || !activeMatchId || document.visibilityState !== 'visible') return;
     let cancelled = false;
     const heartbeat = async () => {
-      const { data, error } = await supabase.rpc('record_affiliate_heartbeat');
+      const { data, error } = await supabase!.rpc('record_affiliate_heartbeat');
       if (cancelled || error) return;
       const seconds = Number((data as { qualifying_seconds_today?: number } | null)?.qualifying_seconds_today);
       if (Number.isFinite(seconds)) setAffiliateActivitySeconds(seconds);
@@ -177,10 +177,10 @@ export default function App() {
     let cancelled = false;
     setReportsLoading(true);
     Promise.all([
-      supabase.from('member_reports').select('id, reporter_id, reported_user_id, reason, details, status, created_at').order('created_at', { ascending: false }).limit(100),
-      supabase.from('member_safety_events').select('id, user_id, original_message, detected_reasons, strike_number, action_taken, created_at').order('created_at', { ascending: false }).limit(200),
-      supabase.from('member_safety_status').select('user_id, strike_count, suspended_until, updated_at').order('updated_at', { ascending: false }).limit(200),
-      supabase.from('member_subscriptions').select('user_id,plan_code,status,created_at,payment_verified').eq('status','pending').order('created_at',{ascending:false}).limit(200),
+      supabase!.from('member_reports').select('id, reporter_id, reported_user_id, reason, details, status, created_at').order('created_at', { ascending: false }).limit(100),
+      supabase!.from('member_safety_events').select('id, user_id, original_message, detected_reasons, strike_number, action_taken, created_at').order('created_at', { ascending: false }).limit(200),
+      supabase!.from('member_safety_status').select('user_id, strike_count, suspended_until, updated_at').order('updated_at', { ascending: false }).limit(200),
+      supabase!.from('member_subscriptions').select('user_id,plan_code,status,created_at,payment_verified').eq('status','pending').order('created_at',{ascending:false}).limit(200),
     ]).then(([reports, events, statuses, subscriptions]) => {
       if (cancelled) return;
       if (reports.error) setNotice('Could not load reports. Please check administrator policies.');
@@ -198,16 +198,16 @@ export default function App() {
   async function submitSubscriptionRequest() {
     if (!supabase || !session) { setNotice('Sign in before requesting a subscription.'); return; }
     const planMap: Record<string, string> = { week: 'week', month: 'month', quarter: 'three_months', half: 'six_months', year: 'yearly' };
-    const { error } = await supabase.rpc('request_subscription_plan', { p_plan_code: planMap[selectedPlan] || 'week' });
+    const { error } = await supabase!.rpc('request_subscription_plan', { p_plan_code: planMap[selectedPlan] || 'week' });
     if (error) { setNotice('Could not submit your plan request. Please try again.'); return; }
     setNotice('Subscription request submitted. Your plan stays locked until payment is verified and an administrator approves it.');
-    const { data } = await supabase.from('member_subscriptions').select('plan_code,status,ends_at,payment_verified,promo_chat_until').eq('user_id', session.user.id).maybeSingle();
+    const { data } = await supabase!.from('member_subscriptions').select('plan_code,status,ends_at,payment_verified,promo_chat_until').eq('user_id', session.user.id).maybeSingle();
     if (data) setSubscriptionInfo(data as typeof subscriptionInfo);
   }
 
   async function reviewSubscription(userId: string, planCode: string, approve: boolean) {
     if (!supabase || !session || !isAdmin) return;
-    const { error } = await supabase.rpc('admin_set_subscription', { p_user_id: userId, p_plan_code: planCode, p_approve: approve });
+    const { error } = await supabase!.rpc('admin_set_subscription', { p_user_id: userId, p_plan_code: planCode, p_approve: approve });
     if (error) { setNotice('Subscription review failed. Check administrator permissions.'); return; }
     setAdminSubscriptions(current => current.filter(item => item.user_id !== userId));
     setNotice(approve ? 'Subscription approved and activated.' : 'Subscription request declined.');
@@ -215,7 +215,7 @@ export default function App() {
 
   async function updateReportStatus(reportId: string, status: 'reviewing' | 'resolved' | 'dismissed') {
     if (!supabase || !session || !isAdmin) return;
-    const { error } = await supabase.from('member_reports').update({ status }).eq('id', reportId);
+    const { error } = await supabase!.from('member_reports').update({ status }).eq('id', reportId);
     if (error) { setNotice('Could not update this report.'); return; }
     setAdminReports(current => current.map(report => report.id === reportId ? { ...report, status } : report));
     setNotice('Report marked ' + status + '.');
@@ -223,12 +223,12 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase) { setCheckingSession(false); return; }
-    supabase.auth.getSession().then(({ data, error }) => {
+    supabase!.auth.getSession().then(({ data, error }) => {
       if (error) setNotice(error.message);
       setSession(data.session);
       setCheckingSession(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
+    const { data: { subscription } } = supabase!.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
     return () => subscription.unsubscribe();
   }, []);
 
@@ -312,7 +312,7 @@ export default function App() {
     setBusy(true);
     try {
       if (mode === 'forgot') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/` });
+        const { error } = await supabase!.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/` });
         if (error) throw error;
         setNotice('If an account exists for that email, a password reset link has been sent. Check your inbox.');
       } else if (mode === 'signup') {
@@ -330,16 +330,16 @@ export default function App() {
         const age = Number(signupAge);
         if (!Number.isInteger(age) || age < 18 || age > 120) throw new Error('DateMe is for adults aged 18 and over. Please enter a valid age.');
         if (displayName.trim().length < 2) throw new Error('Please enter a name with at least 2 characters.');
-        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { data: { display_name: displayName.trim(), age } } });
+        const { data, error } = await supabase!.auth.signUp({ email: email.trim(), password, options: { data: { display_name: displayName.trim(), age } } });
         if (error) throw error;
         if (data.user) {
-          const { error: profileError } = await supabase.from('profiles').upsert({ id: data.user.id, display_name: displayName.trim(), age, city: null, bio: null, photo_url: null }, { onConflict: 'id', ignoreDuplicates: true });
+          const { error: profileError } = await supabase!.from('profiles').upsert({ id: data.user.id, display_name: displayName.trim(), age, city: null, bio: null, photo_url: null }, { onConflict: 'id', ignoreDuplicates: true });
           if (profileError) setNotice('Your account was created, but your profile needs finishing in My profile.');
         }
         if (data.session) setNotice('Welcome to DateMe! Your account is ready.');
         else { setNotice('Check your email for a confirmation link, then come back to sign in.'); setMode('signin'); }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        const { error } = await supabase!.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
         setNotice('You are signed in. Welcome back!');
       }
@@ -349,7 +349,7 @@ export default function App() {
 
   async function handleSignOut() {
     if (!supabase) return;
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase!.auth.signOut();
     setNotice(error ? error.message : 'You have signed out.');
     setTab('discover'); setActiveMatchId('');
   }
@@ -370,7 +370,7 @@ export default function App() {
       setNotice(`You have already liked ${profile.display_name}.`);
       return;
     }
-    const { error } = await supabase.from('likes').upsert(
+    const { error } = await supabase!.from('likes').upsert(
       { user_id: session.user.id, liked_user_id: profile.id },
       { onConflict: 'user_id,liked_user_id', ignoreDuplicates: true },
     );
@@ -378,7 +378,7 @@ export default function App() {
     setLiked((current) => current.includes(profile.id) ? current : [...current, profile.id]);
     // The database trigger creates a match on a mutual like. Check matches rather
     // than querying another member's likes, which RLS correctly keeps private.
-    const { data: newMatches } = await supabase.from('matches').select('id, user_one, user_two, created_at').or(`user_one.eq.${session.user.id},user_two.eq.${session.user.id}`).order('created_at', { ascending: false });
+    const { data: newMatches } = await supabase!.from('matches').select('id, user_one, user_two, created_at').or(`user_one.eq.${session.user.id},user_two.eq.${session.user.id}`).order('created_at', { ascending: false });
     if (newMatches) {
       setMatches(newMatches as Match[]);
       const matched = newMatches.some((match) => match.user_one === profile.id || match.user_two === profile.id);
@@ -398,14 +398,14 @@ export default function App() {
     const reason = window.prompt('Why are you reporting this member? (fake profile, harassment, scam, inappropriate content, other)');
     if (!reason?.trim()) return;
     const details = window.prompt('Optional details for the safety team (do not include passwords or financial information):') || '';
-    const { error } = await supabase.from('member_reports').insert({ reporter_id: session.user.id, reported_user_id: profile.id, reason: reason.trim().slice(0, 120), details: details.trim().slice(0, 2000), status: 'open' });
+    const { error } = await supabase!.from('member_reports').insert({ reporter_id: session.user.id, reported_user_id: profile.id, reason: reason.trim().slice(0, 120), details: details.trim().slice(0, 2000), status: 'open' });
     setNotice(error ? 'Report could not be submitted. Please try again.' : 'Thank you. Your report has been sent for review.');
   }
 
   async function blockMember(profile: Profile) {
     if (!supabase || !session) { setNotice('Sign in to block a member.'); return; }
     if (!window.confirm('Block ' + profile.display_name + '? Their profile will be hidden from your discovery list.')) return;
-    const { error } = await supabase.from('member_blocks').upsert({ blocker_id: session.user.id, blocked_user_id: profile.id }, { onConflict: 'blocker_id,blocked_user_id', ignoreDuplicates: true });
+    const { error } = await supabase!.from('member_blocks').upsert({ blocker_id: session.user.id, blocked_user_id: profile.id }, { onConflict: 'blocker_id,blocked_user_id', ignoreDuplicates: true });
     if (error) { setNotice('Could not block this member. Please try again.'); return; }
     setBlockedIds((current) => current.includes(profile.id) ? current : [...current, profile.id]);
     setNotice(profile.display_name + ' has been blocked from your discovery list.');
@@ -426,9 +426,9 @@ export default function App() {
         setBusy(false); setNotice('Your photo must be 5 MB or smaller.'); return;
       }
       const filePath = `${session.user.id}/${crypto.randomUUID()}.${extension === 'jpg' ? 'jpg' : extension}`;
-      const { error: uploadError } = await supabase.storage.from('dateme-avatars').upload(filePath, photoFile, { contentType: photoFile.type, upsert: false });
+      const { error: uploadError } = await supabase!.storage.from('dateme-avatars').upload(filePath, photoFile, { contentType: photoFile.type, upsert: false });
       if (uploadError) { setBusy(false); setNotice('Photo upload failed. Please try another image.'); return; }
-      photoUrl = supabase.storage.from('dateme-avatars').getPublicUrl(filePath).data.publicUrl;
+      photoUrl = supabase!.storage.from('dateme-avatars').getPublicUrl(filePath).data.publicUrl;
     }
     const payload = {
       id: session.user.id,
@@ -444,7 +444,7 @@ export default function App() {
       languages: myProfile.languages || [],
       updated_at: new Date().toISOString(),
     };
-    const { data, error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' }).select('id, display_name, age, city, bio, photo_url, interests, prompt_question, prompt_answer, looking_for, languages').single();
+    const { data, error } = await supabase!.from('profiles').upsert(payload, { onConflict: 'id' }).select('id, display_name, age, city, bio, photo_url, interests, prompt_question, prompt_answer, looking_for, languages').single();
     setBusy(false);
     if (error) { setNotice('Could not save your profile. Check that the database schema has been applied.'); return; }
     setMyProfile(data as Profile);
@@ -474,12 +474,12 @@ export default function App() {
       return;
     }
     if (!supabase || !session || !activeMatchId) return;
-    const { data: matchRow } = await supabase.from('matches').select('user_one, user_two').eq('id', activeMatchId).maybeSingle();
+    const { data: matchRow } = await supabase!.from('matches').select('user_one, user_two').eq('id', activeMatchId).maybeSingle();
     if (!matchRow || ![matchRow.user_one, matchRow.user_two].includes(session.user.id)) { setNotice('This conversation is no longer available.'); return; }
     const otherUserId = matchRow.user_one === session.user.id ? matchRow.user_two : matchRow.user_one;
-    const { data: blockRows } = await supabase.from('member_blocks').select('id').or(`and(blocker_id.eq.${session.user.id},blocked_user_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_user_id.eq.${session.user.id})`).limit(1);
+    const { data: blockRows } = await supabase!.from('member_blocks').select('id').or(`and(blocker_id.eq.${session.user.id},blocked_user_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_user_id.eq.${session.user.id})`).limit(1);
     if (blockRows?.length) { setNotice('Messaging is unavailable because one of these accounts has blocked the other.'); return; }
-    const { data, error } = await supabase.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
+    const { data, error } = await supabase!.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
     if (error) {
       if (error.message?.includes('ACCOUNT_SUSPENDED_24H')) setNotice('Your account has been suspended for 24 hours. Contact the DateMe administrator.');
       else setNotice('Message could not be sent. Messaging is only available to matched members.');
@@ -494,10 +494,10 @@ export default function App() {
 
   async function hasPaidMediaAccess(): Promise<boolean> {
     if (!supabase || !session || !activeMatchId) return false;
-    const { data: matchRow } = await supabase.from('matches').select('user_one,user_two').eq('id', activeMatchId).maybeSingle();
+    const { data: matchRow } = await supabase!.from('matches').select('user_one,user_two').eq('id', activeMatchId).maybeSingle();
     if (!matchRow || ![matchRow.user_one, matchRow.user_two].includes(session.user.id)) return false;
     const otherId = matchRow.user_one === session.user.id ? matchRow.user_two : matchRow.user_one;
-    const { data: plans } = await supabase.from('member_subscriptions').select('user_id,plan_code,status,payment_verified,ends_at').in('user_id', [session.user.id, otherId]);
+    const { data: plans } = await supabase!.from('member_subscriptions').select('user_id,plan_code,status,payment_verified,ends_at').in('user_id', [session.user.id, otherId]);
     return Boolean(plans && plans.length === 2 && plans.every(p => p.status === 'active' && p.payment_verified && p.ends_at && new Date(p.ends_at).getTime() > Date.now()) && plans[0].plan_code === plans[1].plan_code);
   }
 
@@ -532,23 +532,23 @@ export default function App() {
       return;
     }
     setRecordingBusy(true);
-    const { data: matchRow } = await supabase.from('matches').select('user_one, user_two').eq('id', activeMatchId).maybeSingle();
+    const { data: matchRow } = await supabase!.from('matches').select('user_one, user_two').eq('id', activeMatchId).maybeSingle();
     if (!matchRow || ![matchRow.user_one, matchRow.user_two].includes(session.user.id)) {
       setNotice('This conversation is no longer available.');
       setRecordingBusy(false);
       return;
     }
     const otherUserId = matchRow.user_one === session.user.id ? matchRow.user_two : matchRow.user_one;
-    const { data: blockRows } = await supabase.from('member_blocks').select('id').or(`and(blocker_id.eq.${session.user.id},blocked_user_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_user_id.eq.${session.user.id})`).limit(1);
+    const { data: blockRows } = await supabase!.from('member_blocks').select('id').or(`and(blocker_id.eq.${session.user.id},blocked_user_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_user_id.eq.${session.user.id})`).limit(1);
     if (blockRows?.length) {
       setNotice('Sending voice notes is unavailable because one of these accounts has blocked the other.');
       setRecordingBusy(false);
       return;
     }
     const path = `${activeMatchId}/${session.user.id}/${crypto.randomUUID()}.webm`;
-    const { error: uploadError } = await supabase.storage.from('dateme-voice-notes').upload(path, voiceBlob, { contentType: voiceBlob.type || 'audio/webm', upsert: false });
+    const { error: uploadError } = await supabase!.storage.from('dateme-voice-notes').upload(path, voiceBlob, { contentType: voiceBlob.type || 'audio/webm', upsert: false });
     if (uploadError) { setNotice('Voice note upload is not ready yet. Please check the voice-note storage bucket setup.'); setRecordingBusy(false); return; }
-    const { data, error } = await supabase.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body: '🎙️ Voice note', audio_path: path, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
+    const { data, error } = await supabase!.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body: '🎙️ Voice note', audio_path: path, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
     if (error) setNotice('Could not send the voice note.');
     else if (data) setMessages((current) => current.some((item) => item.id === data.id) ? current : [...current, data as Message]);
     if (voicePreview) URL.revokeObjectURL(voicePreview);
@@ -561,7 +561,7 @@ export default function App() {
     setNotice('');
     setTab('matches');
     if (!profiles.some((profile) => profile.id === otherId) && supabase) {
-      void supabase.from('profiles').select('id, display_name, age, city, bio, photo_url').eq('id', otherId).maybeSingle()
+      void supabase!.from('profiles').select('id, display_name, age, city, bio, photo_url').eq('id', otherId).maybeSingle()
         .then(({ data }) => { if (data) setProfiles((current) => [...current.filter((p) => p.id !== data.id), data as Profile]); });
     }
   }
