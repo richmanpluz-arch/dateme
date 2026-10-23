@@ -100,6 +100,10 @@ export default function App() {
   const referralCodeFromUrl = new URLSearchParams(window.location.search).get('ref');
 
   useEffect(() => {
+    if (referralCodeFromUrl) localStorage.setItem('dateme-pending-referral', referralCodeFromUrl);
+  }, []);
+
+  useEffect(() => {
     if (session?.user) setPage('discover');
     else setPage('register');
   }, [session?.user?.id]);
