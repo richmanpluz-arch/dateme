@@ -83,6 +83,9 @@ export default function App() {
   const [focusedChatOnly, setFocusedChatOnly] = useState(false);
   const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
   const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
+  const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
+  const [translationBusyId, setTranslationBusyId] = useState<string | null>(null);
+  const [translationLanguage, setTranslationLanguage] = useState('en');
   const [tab, setTab] = useState<'discover' | 'likes' | 'matches' | 'profile'>('discover');
   const [searchText, setSearchText] = useState('');
   const [blockedIds, setBlockedIds] = useState<string[]>([]);
@@ -466,8 +469,49 @@ export default function App() {
     setOpenMessageMenuId(null);
   }
 
-  function translateChatMessage(message: Message) {
-    window.open('https://translate.google.com/?sl=auto&tl=en&text=' + encodeURIComponent(message.body) + '&op=translate', '_blank', 'noopener,noreferrer');
+  async function translateChatMessage(message: Message) {
+    if (!message.body.trim() || message.audio_path) {
+      setNotice('Only text messages can be translated.');
+      setOpenMessageMenuId(null);
+      return;
+    }
+    setTranslationBusyId(message.id);
+    setOpenMessageMenuId(null);
+    try {
+      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(message.body.slice(0, 450))}&langpair=auto|${encodeURIComponent(translationLanguage)}`);
+      if (!response.ok) throw new Error('Translation service unavailable');
+      const payload = await response.json() as { responseStatus?: number; responseData?: { translatedText?: string }; responseDetails?: string };
+      const translated = payload.responseData?.translatedText;
+      if (payload.responseStatus && payload.responseStatus !== 200) throw new Error(payload.responseDetails || 'Translation failed');
+      if (!translated) throw new Error('No translation was returned');
+      setTranslatedMessages((current) => ({ ...current, [message.id]: translated }));
+    } catch {
+      setNotice('Translation is temporarily unavailable. Please try again.');
+    } finally {
+      setTranslationBusyId(null);
+    }
+  }
+
+  function playVoiceMessage(message: Message) {
+    const audio = document.getElementById(`voice-${message.id}`) as HTMLAudioElement | null;
+    if (audio) void audio.play().catch(() => setNotice('Could not play this voice note yet. Please wait for it to load.'));
+    setOpenMessageMenuId(null);
+  }
+
+  function downloadVoiceMessage(message: Message) {
+    const url = voiceUrls[message.id];
+    if (!url) {
+      setNotice('This voice note is still loading. Please try again in a moment.');
+      setOpenMessageMenuId(null);
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `dateme-voice-note-${message.id}.webm`;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
     setOpenMessageMenuId(null);
   }
 
@@ -716,7 +760,7 @@ export default function App() {
             <section className="chat-panel">{activeMatch ? <>
               <div className="chat-heading">{focusedChatOnly && <button type="button" className="chat-back-button" onClick={() => setFocusedChatOnly(false)} aria-label="Back to matches" title="Back to matches">‹</button>}<span className="match-avatar">{activePerson?.photo_url ? <img src={activePerson.photo_url} alt="" /> : '♡'}</span><div><strong>{activePerson?.display_name || 'Your match'}</strong><small>{focusedChatOnly ? 'Private conversation' : 'Only you and your match can see this chat'}</small></div></div>
               <div className="chat-tools-note">🔒 Private chat · messages expire after 24 hours</div>
-              <div className="chat-messages">{messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id)).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id)).map((message) => <div key={message.id} className={message.sender_id === session.user.id ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" className="message-menu-trigger" title="Message options" aria-label="Message options" aria-expanded={openMessageMenuId === message.id} onClick={() => setOpenMessageMenuId((current) => current === message.id ? null : message.id)}>⋯</button>{openMessageMenuId === message.id && <div className="message-options-menu" role="menu"><button type="button" role="menuitem" onClick={() => replyToChatMessage(message)}>↶ Reply</button><button type="button" role="menuitem" onClick={() => translateChatMessage(message)}>文 Translate</button><button type="button" role="menuitem" onClick={() => copyChatMessage(message)}>▢ Copy</button><button type="button" role="menuitem" onClick={() => deleteChatMessageForMe(message)}>Delete for me</button>{message.sender_id === session.user.id && <button type="button" role="menuitem" className="message-delete-action" onClick={() => void deleteChatMessageForEveryone(message)}>Delete for everyone</button>}</div>}</div>{message.reply_to && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · disappears in 24h</time></div>)}</div>
+              <div className="chat-messages">{messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id)).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id)).map((message) => <div key={message.id} className={message.sender_id === session.user.id ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" className="message-menu-trigger" title="Message options" aria-label="Message options" aria-expanded={openMessageMenuId === message.id} onClick={() => setOpenMessageMenuId((current) => current === message.id ? null : message.id)}>⋯</button>{openMessageMenuId === message.id && <div className="message-options-menu" role="menu"><button type="button" role="menuitem" onClick={() => replyToChatMessage(message)}>↶ Reply</button>{!message.audio_path && <button type="button" role="menuitem" onClick={() => void translateChatMessage(message)}>{translationBusyId === message.id ? '… Translating' : '文 Translate in DateMe'}</button>}{message.audio_path && <><button type="button" role="menuitem" onClick={() => playVoiceMessage(message)}>▶ Play voice note</button><button type="button" role="menuitem" onClick={() => downloadVoiceMessage(message)}>↓ Download voice note</button></>}<button type="button" role="menuitem" onClick={() => copyChatMessage(message)}>▢ Copy</button><button type="button" role="menuitem" onClick={() => deleteChatMessageForMe(message)}>Delete for me</button>{message.sender_id === session.user.id && <button type="button" role="menuitem" className="message-delete-action" onClick={() => void deleteChatMessageForEveryone(message)}>Delete for everyone</button>}</div>}</div>{message.reply_to && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio id={`voice-${message.id}`} controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}{translatedMessages[message.id] && <div className="message-translation"><label>Translated in DateMe <select aria-label="Translation language" value={translationLanguage} onChange={(e) => setTranslationLanguage(e.target.value)}><option value="en">English</option><option value="af">Afrikaans</option><option value="zu">isiZulu</option><option value="xh">isiXhosa</option><option value="st">Sesotho</option><option value="tn">Setswana</option><option value="nso">Sepedi</option><option value="fr">French</option><option value="es">Spanish</option><option value="pt">Portuguese</option><option value="de">German</option><option value="it">Italian</option><option value="sw">Swahili</option><option value="ar">Arabic</option><option value="zh-CN">Chinese</option><option value="hi">Hindi</option><option value="ja">Japanese</option><option value="ru">Russian</option><option value="nl">Dutch</option><option value="pl">Polish</option></select></label><p>{translatedMessages[message.id]}</p><button type="button" onClick={() => void translateChatMessage(message)}>Translate again</button></div>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · disappears in 24h</time></div>)}</div>
               {replyTo && <div className="reply-composer"><span>↶ Replying to: {replyTo.body.slice(0, 90)}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
               {voicePreview && <div className="voice-preview"><audio controls src={voicePreview} /><button type="button" onClick={() => { URL.revokeObjectURL(voicePreview); setVoicePreview(null); setVoiceBlob(null); }}>Discard</button><button type="button" onClick={() => void sendVoiceNote()} disabled={recordingBusy}>Send voice note</button></div>}
               {showEmojiPicker && <div className="emoji-picker" aria-label="Emoji picker">{['😀','😂','🥰','😍','😘','😊','😉','❤️','💕','💖','🔥','👏','👍','🙏','🌹','✨','😢','😅','🤗','💋'].map((emoji) => <button type="button" key={emoji} onClick={() => setMessageText((text) => text + emoji)}>{emoji}</button>)}</div>}
@@ -753,7 +797,7 @@ export default function App() {
             <button type="button" className="focused-chat-close" onClick={() => { setFocusedChatOnly(false); setDemoChatPerson(null); setDemoMessages([]); setActiveMatchId(''); setTab('discover'); setNotice(''); }} aria-label="Close conversation" title="Close">×</button>
           </header>
           <div className="focused-chat-messages">
-            {(demoChatPerson ? demoMessages : messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id))).map((message) => <div key={message.id} className={message.sender_id === (demoChatPerson ? 'demo-you' : session?.user.id) ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" className="message-menu-trigger" title="Message options" aria-label="Message options" aria-expanded={openMessageMenuId === message.id} onClick={() => setOpenMessageMenuId((current) => current === message.id ? null : message.id)}>⋯</button>{openMessageMenuId === message.id && <div className="message-options-menu" role="menu"><button type="button" role="menuitem" onClick={() => replyToChatMessage(message)}>↶ Reply</button><button type="button" role="menuitem" onClick={() => translateChatMessage(message)}>文 Translate</button><button type="button" role="menuitem" onClick={() => copyChatMessage(message)}>▢ Copy</button><button type="button" role="menuitem" onClick={() => deleteChatMessageForMe(message, Boolean(demoChatPerson))}>Delete for me</button>{(demoChatPerson || message.sender_id === session?.user.id) && <button type="button" role="menuitem" className="message-delete-action" onClick={() => void deleteChatMessageForEveryone(message, Boolean(demoChatPerson))}>Delete for everyone</button>}</div>}</div>{message.reply_to && !demoChatPerson && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div>)}
+            {(demoChatPerson ? demoMessages : messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id))).map((message) => <div key={message.id} className={message.sender_id === (demoChatPerson ? 'demo-you' : session?.user.id) ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" className="message-menu-trigger" title="Message options" aria-label="Message options" aria-expanded={openMessageMenuId === message.id} onClick={() => setOpenMessageMenuId((current) => current === message.id ? null : message.id)}>⋯</button>{openMessageMenuId === message.id && <div className="message-options-menu" role="menu"><button type="button" role="menuitem" onClick={() => replyToChatMessage(message)}>↶ Reply</button>{!message.audio_path && <button type="button" role="menuitem" onClick={() => void translateChatMessage(message)}>{translationBusyId === message.id ? '… Translating' : '文 Translate in DateMe'}</button>}{message.audio_path && <><button type="button" role="menuitem" onClick={() => playVoiceMessage(message)}>▶ Play voice note</button><button type="button" role="menuitem" onClick={() => downloadVoiceMessage(message)}>↓ Download voice note</button></>}<button type="button" role="menuitem" onClick={() => copyChatMessage(message)}>▢ Copy</button><button type="button" role="menuitem" onClick={() => deleteChatMessageForMe(message, Boolean(demoChatPerson))}>Delete for me</button>{(demoChatPerson || message.sender_id === session?.user.id) && <button type="button" role="menuitem" className="message-delete-action" onClick={() => void deleteChatMessageForEveryone(message, Boolean(demoChatPerson))}>Delete for everyone</button>}</div>}</div>{message.reply_to && !demoChatPerson && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio id={`voice-${message.id}`} controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}{translatedMessages[message.id] && <div className="message-translation"><label>Translated in DateMe <select aria-label="Translation language" value={translationLanguage} onChange={(e) => setTranslationLanguage(e.target.value)}><option value="en">English</option><option value="af">Afrikaans</option><option value="zu">isiZulu</option><option value="xh">isiXhosa</option><option value="st">Sesotho</option><option value="tn">Setswana</option><option value="nso">Sepedi</option><option value="fr">French</option><option value="es">Spanish</option><option value="pt">Portuguese</option><option value="de">German</option><option value="it">Italian</option><option value="sw">Swahili</option><option value="ar">Arabic</option><option value="zh-CN">Chinese</option><option value="hi">Hindi</option><option value="ja">Japanese</option><option value="ru">Russian</option><option value="nl">Dutch</option><option value="pl">Polish</option></select></label><p>{translatedMessages[message.id]}</p><button type="button" onClick={() => void translateChatMessage(message)}>Translate again</button></div>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div>)}
             {(demoChatPerson ? demoMessages.length === 0 : messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).length === 0) && <p className="chat-empty">Say hello to start your conversation.</p>}
           </div>
           {replyTo && !demoChatPerson && <div className="reply-composer"><span>↶ Replying to: {replyTo.body.slice(0, 70)}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
