@@ -1774,8 +1774,23 @@ export default function App() {
     if (!await hasPaidMediaAccess()) { setNotice('Voice notes are available to the DateMe admin, approved test accounts, and members with an active verified one-year subscription.'); setRecordingBusy(false); return; }
     if (!navigator.mediaDevices?.getUserMedia || !('MediaRecorder' in window)) { setNotice('Voice recording is not supported in this browser. Try an updated browser with microphone permission.'); setRecordingBusy(false); return; }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      // Ask the browser/OS to suppress background noise, echo, and uneven microphone levels.
+      // These are best-effort constraints: unsupported devices safely fall back to their defaults.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: { ideal: true },
+          noiseSuppression: { ideal: true },
+          autoGainControl: { ideal: true },
+          channelCount: { ideal: 1 },
+          sampleRate: { ideal: 48000 },
+        },
+      });
+      // Prefer Opus where available for clearer speech at a small upload size.
+      const preferredMimeTypes = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'];
+      const preferredMimeType = preferredMimeTypes.find((type) => MediaRecorder.isTypeSupported(type));
+      const recorderOptions: MediaRecorderOptions = { audioBitsPerSecond: 96000 };
+      if (preferredMimeType) recorderOptions.mimeType = preferredMimeType;
+      const recorder = new MediaRecorder(stream, recorderOptions);
       recorderRef.current = recorder;
       recorderChunksRef.current = [];
       recorder.ondataavailable = (event) => { if (event.data.size) recorderChunksRef.current.push(event.data); };
