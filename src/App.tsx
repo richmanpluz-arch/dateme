@@ -16,7 +16,8 @@ type Profile = {
   languages?: string[];
 };
 type Match = { id: string; user_one: string; user_two: string; created_at: string };
-type Message = { id: string; match_id: string; sender_id: string; body: string; created_at: string; expires_at?: string; reply_to?: string | null; audio_path?: string | null; demo?: boolean };
+type Message = { id: string; match_id: string; sender_id: string; body: string; created_at: string; expires_at?: string; reply_to?: string | null; audio_path?: string | null; deleted_at?: string | null; deleted_by?: string | null; demo?: boolean };
+type MessageReceipt = { message_id: string; user_id: string; delivered_at: string | null; read_at: string | null };
 
 const aiProfiles: Profile[] = [
   { id: 'ai-sarah', display_name: 'Sarah', age: 27, city: 'Johannesburg', bio: 'Coffee lover, weekend explorer and fan of honest conversations.', photo_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=85', interests: ['Coffee','Travel','Music'] },
@@ -76,6 +77,10 @@ export default function App() {
   const [liked, setLiked] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('dateme-ai-likes') || '[]') as string[]; } catch { return []; } });
   const [matches, setMatches] = useState<Match[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [messageReceipts, setMessageReceipts] = useState<Record<string, MessageReceipt>>({});
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
+  const [translationPanel, setTranslationPanel] = useState<{ messageId: string; original: string; translated: string; loading: boolean; error: string } | null>(null);
+  const [translationTarget, setTranslationTarget] = useState('en');
   const [messageText, setMessageText] = useState('');
   const [demoChatPerson, setDemoChatPerson] = useState<Profile | null>(null);
   const [demoMessages, setDemoMessages] = useState<Message[]>([]);
@@ -500,19 +505,39 @@ export default function App() {
     if (!supabase || !session || !activeMatchId) { setMessages([]); return; }
     let cancelled = false;
     async function loadMessages() {
-      const { data, error } = await supabase!.from('messages').select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').eq('match_id', activeMatchId).order('created_at', { ascending: true }).limit(200);
+      const { data, error } = await supabase!.from('messages').select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path, deleted_at, deleted_by').eq('match_id', activeMatchId).order('created_at', { ascending: true }).limit(200);
       // Expired messages are removed whenever a conversation is opened/refreshed.
       await supabase!.from('messages').delete().eq('match_id', activeMatchId).lt('expires_at', new Date().toISOString());
       if (cancelled) return;
       if (error) setNotice('Could not load this conversation.');
-      else setMessages((data || []) as Message[]);
+      else {
+        const rows = (data || []) as Message[];
+        const { data: hiddenRows } = await supabase!.from('message_hidden_for').select('message_id').eq('user_id', session!.user.id);
+        const hidden = (hiddenRows || []).map((row) => String(row.message_id));
+        if (cancelled) return;
+        setHiddenMessageIds(hidden);
+        setMessages(rows.filter((message) => !hidden.includes(message.id)));
+        if (rows.length) {
+          const { data: receiptRows } = await supabase!.from('message_receipts').select('message_id,user_id,delivered_at,read_at').in('message_id', rows.map((message) => message.id));
+          if (receiptRows) setMessageReceipts((current) => ({ ...current, ...Object.fromEntries((receiptRows as MessageReceipt[]).map((receipt) => [receipt.message_id, receipt])) }));
+          const incoming = rows.filter((message) => message.sender_id !== session!.user.id && !message.deleted_at);
+          await Promise.all(incoming.map((message) => supabase!.from('message_receipts').upsert({ message_id: message.id, user_id: session!.user.id, delivered_at: new Date().toISOString(), read_at: new Date().toISOString() }, { onConflict: 'message_id,user_id' })));
+        }
+      }
     }
     void loadMessages();
     const channel = supabase!.channel(`messages-${activeMatchId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${activeMatchId}` }, (payload) => {
         const next = payload.new as Message;
         if (next.expires_at && new Date(next.expires_at).getTime() <= Date.now()) return;
-        setMessages((current) => current.some((item) => item.id === next.id) ? current : [...current, next]);
+        setMessages((current) => current.some((item) => item.id === next.id || hiddenMessageIds.includes(next.id) ? current : [...current, next]);
+        if (next.sender_id !== session!.user.id) void supabase!.from('message_receipts').upsert({ message_id: next.id, user_id: session!.user.id, delivered_at: new Date().toISOString(), read_at: new Date().toISOString() }, { onConflict: 'message_id,user_id' });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_receipts' }, async () => {
+        const ids = messages.map((message) => message.id);
+        if (!ids.length) return;
+        const { data } = await supabase!.from('message_receipts').select('message_id,user_id,delivered_at,read_at').in('message_id', ids);
+        if (data) setMessageReceipts((current) => ({ ...current, ...Object.fromEntries((data as MessageReceipt[]).map((receipt) => [receipt.message_id, receipt])) }));
       }).subscribe();
     return () => { cancelled = true; void supabase!.removeChannel(channel); };
   }, [session, activeMatchId]);
@@ -756,6 +781,41 @@ export default function App() {
     setMessageText(''); setReplyTo(null); setShowEmojiPicker(false);
   }
 
+  async function translateMessage(message: Message) {
+    setTranslationPanel({ messageId: message.id, original: message.body, translated: '', loading: true, error: '' });
+    try {
+      const endpoint = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(translationTarget)}&dt=t&q=${encodeURIComponent(message.body)}`;
+      const response = await fetch(endpoint);
+      if (!response.ok) throw new Error('Translation service is temporarily unavailable.');
+      const payload = await response.json() as unknown[][];
+      const segments = Array.isArray(payload[0]) ? payload[0] as unknown[][] : [];
+      const translated = segments.map((segment) => typeof segment[0] === 'string' ? segment[0] : '').join('');
+      if (!translated) throw new Error('No translation was returned. Try again shortly.');
+      setTranslationPanel({ messageId: message.id, original: message.body, translated, loading: false, error: '' });
+    } catch {
+      setTranslationPanel({ messageId: message.id, original: message.body, translated: '', loading: false, error: 'Translation is temporarily unavailable. Check your connection or try again.' });
+    }
+  }
+
+  async function deleteMessage(message: Message, forEveryone: boolean) {
+    if (!supabase || !session) return;
+    if (forEveryone && message.sender_id !== session.user.id) return;
+    const prompt = forEveryone ? 'Delete this message for everyone in this conversation?' : 'Delete this message from your chat only?';
+    if (!window.confirm(prompt)) return;
+    if (forEveryone) {
+      const { error } = await supabase.from('messages').update({ body: 'This message was deleted', audio_path: null, deleted_at: new Date().toISOString(), deleted_by: session.user.id }).eq('id', message.id).eq('sender_id', session.user.id);
+      if (error) { setNotice('Could not delete this message for everyone. Please try again.'); return; }
+      setMessages((current) => current.map((item) => item.id === message.id ? { ...item, body: 'This message was deleted', audio_path: null, deleted_at: new Date().toISOString(), deleted_by: session.user.id } : item));
+    } else {
+      const { error } = await supabase.from('message_hidden_for').upsert({ message_id: message.id, user_id: session.user.id }, { onConflict: 'message_id,user_id' });
+      if (error) { setNotice('Could not delete this message from your view. Please try again.'); return; }
+      setHiddenMessageIds((current) => current.includes(message.id) ? current : [...current, message.id]);
+      setMessages((current) => current.filter((item) => item.id !== message.id));
+      if (translationPanel?.messageId === message.id) setTranslationPanel(null);
+    }
+    setNotice(forEveryone ? 'Message deleted for everyone.' : 'Message deleted from your chat.');
+  }
+
   async function hasPaidMediaAccess(): Promise<boolean> {
     if (!supabase || !session || !activeMatchId) return false;
     const { data: matchRow } = await supabase!.from('matches').select('user_one,user_two').eq('id', activeMatchId).maybeSingle();
@@ -934,16 +994,17 @@ export default function App() {
             </div>
           </form>}
 
-          {session && tab === 'matches' && <div className="match-layout">
+          {session && tab === 'matches' && <div className={activeMatchId ? 'match-layout chat-open' : 'match-layout'}>
             <aside className="match-list"><h3>Your matches</h3>{matches.length === 0 ? <p className="muted-copy">When you and another member like each other, your match will appear here.</p> : matches.map((match) => {
               const otherId = match.user_one === session.user.id ? match.user_two : match.user_one;
               const person = profiles.find((p) => p.id === otherId);
               return <button key={match.id} className={activeMatchId === match.id ? 'match-row active' : 'match-row'} onClick={() => openChat(match)}><span className="match-avatar">{person?.photo_url ? <img src={person.photo_url} alt="" /> : '♡'}</span><span><strong>{person?.display_name || 'Your match'}</strong><small>{person?.city || 'Say hello'}</small></span><span className="match-arrow">›</span></button>;
             })}</aside>
             <section className="chat-panel">{activeMatch ? <>
-              <div className="chat-heading"><span className="match-avatar">{activePerson?.photo_url ? <img src={activePerson.photo_url} alt="" /> : '♡'}</span><div><strong>{activePerson?.display_name || 'Your match'}</strong><small>Only you and your match can see this chat</small></div></div>
+              <div className="chat-heading"><button type="button" className="chat-back-button" aria-label="Back to matches" onClick={() => { setActiveMatchId(''); setReplyTo(null); setTranslationPanel(null); }}>←</button><span className="match-avatar">{activePerson?.photo_url ? <img src={activePerson.photo_url} alt="" /> : '♡'}</span><div className="chat-heading-person"><strong>{activePerson?.display_name || 'Your match'}</strong><small>● Online chat · private conversation</small></div><button type="button" className="chat-header-more" title="Close conversation" onClick={() => { setActiveMatchId(''); setReplyTo(null); setTranslationPanel(null); }}>×</button></div>
               <div className="chat-tools-note">🔒 Private chat · messages expire after 24 hours</div>
-              <div className="chat-messages">{messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).map((message) => <div key={message.id} className={message.sender_id === session.user.id ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" title="Reply to message" aria-label="Reply to message" onClick={() => { setReplyTo(message); setMessageText(''); }}>↶ Reply</button><button type="button" title="Copy message" aria-label="Copy message" onClick={() => { void navigator.clipboard?.writeText(message.body).then(() => setNotice('Message copied.')).catch(() => setNotice('Copy was blocked by your browser.')); }}>Copy</button><button type="button" title="Translate message" aria-label="Translate message" onClick={() => window.open('https://translate.google.com/?sl=auto&tl=en&text=' + encodeURIComponent(message.body) + '&op=translate', '_blank', 'noopener,noreferrer')}>Translate</button></div>{message.reply_to && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · disappears in 24h</time></div>)}</div>
+              <div className="chat-messages">{messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).map((message) => { const mine = message.sender_id === session.user.id; const receipt = messageReceipts[message.id]; return <div key={message.id} className={mine ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" title="Reply to message" aria-label="Reply to message" disabled={Boolean(message.deleted_at)} onClick={() => { setReplyTo(message); setMessageText(''); }}>↶ Reply</button><button type="button" title="Copy message" aria-label="Copy message" disabled={Boolean(message.deleted_at)} onClick={() => { void navigator.clipboard?.writeText(message.body).then(() => setNotice('Message copied.')).catch(() => setNotice('Copy was blocked by your browser.')); }}>Copy</button><button type="button" title="Translate message" aria-label="Translate message" disabled={Boolean(message.deleted_at)} onClick={() => void translateMessage(message)}>Translate</button><button type="button" title="Delete for me" aria-label="Delete for me" onClick={() => void deleteMessage(message, false)}>Delete for me</button>{mine && !message.deleted_at && <button type="button" title="Delete for everyone" aria-label="Delete for everyone" onClick={() => void deleteMessage(message, true)}>Delete for everyone</button>}</div>{message.reply_to && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.deleted_at ? <p className="deleted-message">{message.body || 'This message was deleted'}</p> : message.audio_path && supabase ? <audio controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{mine && !message.deleted_at && <span className={receipt?.read_at ? 'message-status read' : receipt?.delivered_at ? 'message-status delivered' : 'message-status sent'} title={receipt?.read_at ? 'Read' : receipt?.delivered_at ? 'Delivered' : 'Sent'} aria-label={receipt?.read_at ? 'Read' : receipt?.delivered_at ? 'Delivered' : 'Sent'}>{receipt?.read_at ? '●' : receipt?.delivered_at ? '●' : '·'}</span>} {!message.deleted_at && ' · disappears in 24h'}</time></div>; })}</div>
+              {translationPanel && <aside className="translation-panel" aria-live="polite"><div className="translation-panel-title"><strong>Message translation</strong><button type="button" onClick={() => setTranslationPanel(null)} aria-label="Close translation">×</button></div><label>Translate to <select value={translationTarget} onChange={(event) => { setTranslationTarget(event.target.value); if (translationPanel) void translateMessage({ id: translationPanel.messageId, match_id: activeMatchId, sender_id: '', body: translationPanel.original, created_at: new Date().toISOString() }); }}><option value="en">English</option><option value="af">Afrikaans</option><option value="zu">isiZulu</option><option value="xh">isiXhosa</option><option value="fr">French</option><option value="es">Spanish</option><option value="pt">Portuguese</option><option value="de">German</option><option value="zh-CN">Chinese (Simplified)</option><option value="zh-TW">Chinese (Traditional)</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="hi">Hindi</option><option value="ar">Arabic</option><option value="sw">Swahili</option><option value="ru">Russian</option><option value="it">Italian</option><option value="nl">Dutch</option><option value="tr">Turkish</option><option value="th">Thai</option></select></label><p className="translation-original"><small>Original message</small>{translationPanel.original}</p><p className="translation-result"><small>Translation</small>{translationPanel.loading ? 'Translating…' : translationPanel.error || translationPanel.translated}</p></aside>
               {replyTo && <div className="reply-composer"><span>↶ Replying to: {replyTo.body.slice(0, 90)}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
               {voicePreview && <div className="voice-preview"><audio controls src={voicePreview} /><button type="button" onClick={() => { URL.revokeObjectURL(voicePreview); setVoicePreview(null); setVoiceBlob(null); }}>Discard</button><button type="button" onClick={() => void sendVoiceNote()} disabled={recordingBusy}>Send voice note</button></div>}
               {showEmojiPicker && <div className="emoji-picker" aria-label="Emoji picker">{['😀','😂','🥰','😍','😘','😊','😉','❤️','💕','💖','🔥','👏','👍','🙏','🌹','✨','😢','😅','🤗','💋'].map((emoji) => <button type="button" key={emoji} onClick={() => setMessageText((text) => text + emoji)}>{emoji}</button>)}</div>}
