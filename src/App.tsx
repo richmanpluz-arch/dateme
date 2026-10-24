@@ -913,6 +913,7 @@ export default function App() {
           </nav>}
         </div>
         <nav className="top-links" aria-label="Main navigation"><button onClick={() => { navigateTo("how"); setMenuOpen(false); window.scrollTo(0,0); }}>How it works</button><button onClick={() => { navigateTo("safety"); setMenuOpen(false); window.scrollTo(0,0); }}>Your safety</button>{session && <button onClick={() => { setPage("plans"); setMenuOpen(false); window.scrollTo(0,0); }}>Membership</button>}</nav>
+        <div className="global-page-actions" aria-label="Page controls"><button type="button" onClick={goBackPage} aria-label="Go back to previous page">← Back</button><button type="button" onClick={closePage} aria-label="Close this page and return to the main page">× Close</button></div>
         {session ? <button className="button button-outline top-action" onClick={() => void handleSignOut()}>Sign out</button> : <button className="button button-outline top-action" onClick={() => { navigateTo(session ? 'discover' : 'register'); setMode('signin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Log in</button>}
       </header>
       <main>
