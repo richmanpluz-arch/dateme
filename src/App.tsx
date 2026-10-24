@@ -530,7 +530,7 @@ export default function App() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${activeMatchId}` }, (payload) => {
         const next = payload.new as Message;
         if (next.expires_at && new Date(next.expires_at).getTime() <= Date.now()) return;
-        setMessages((current) => current.some((item) => item.id === next.id || hiddenMessageIds.includes(next.id) ? current : [...current, next]);
+        setMessages((current) => current.some((item) => item.id === next.id) || hiddenMessageIds.includes(next.id) ? current : [...current, next]);
         if (next.sender_id !== session!.user.id) void supabase!.from('message_receipts').upsert({ message_id: next.id, user_id: session!.user.id, delivered_at: new Date().toISOString(), read_at: new Date().toISOString() }, { onConflict: 'message_id,user_id' });
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'message_receipts' }, async () => {
