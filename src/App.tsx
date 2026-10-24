@@ -593,6 +593,7 @@ export default function App() {
     return () => { cancelled = true; };
   }, [messages, session?.user.id]);
   const activePerson = activeMatch ? profiles.find((profile) => profile.id === (activeMatch.user_one === session?.user.id ? activeMatch.user_two : activeMatch.user_one)) : null;
+  const presenceLabel = otherLastSeenAt ? (Date.now() - new Date(otherLastSeenAt).getTime() < 90000 ? '● Online now' : `Last active ${new Date(otherLastSeenAt).toLocaleString()}`) : '● Status unavailable';
 
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setNotice('');
