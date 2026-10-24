@@ -87,8 +87,8 @@ Deno.serve(async (req: Request) => {
   if (order.status === "succeeded") return new Response("Already processed", { status: 200 });
 
   if (successful) {
-    if (amount !== null && Number.isFinite(amount) && Math.abs(amount - Number(order.amount)) > 0.01) return new Response("Amount mismatch", { status: 400 });
-    if (currency && currency !== order.currency) return new Response("Currency mismatch", { status: 400 });
+    if (!Number.isFinite(amount) || Math.abs(amount - Number(order.amount)) > 0.01) return new Response("Amount mismatch", { status: 400 });
+    if (currency !== order.currency) return new Response("Currency mismatch", { status: 400 });
     const { error: finalError } = await db.rpc("finalize_subscription_payment", { p_order_id: order.id, p_provider_payment_id: paymentId || null });
     if (finalError) {
       console.error("subscription activation failed", finalError.message);
