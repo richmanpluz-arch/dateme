@@ -9,19 +9,34 @@ stable
 security definer
 set search_path to ''
 as $function$
-  select exists (
-    select 1
-      from public.member_subscriptions s
-     where s.user_id = p_user_id
-       and s.plan_code = 'yearly'
-       and s.status = 'active'
-       and s.payment_verified is true
-       and s.ends_at > now()
+  select auth.uid() = p_user_id and exists (
+    select 1 from public.member_subscriptions s
+     where s.user_id = p_user_id and s.plan_code = 'yearly'
+       and s.status = 'active' and s.payment_verified is true and s.ends_at > now()
   );
 $function$;
 
 revoke all on function public.dateme_voice_access(uuid) from public;
 grant execute on function public.dateme_voice_access(uuid) to authenticated;
+
+create or replace function public.dateme_can_exchange_voice(p_match_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  select auth.uid() is not null
+     and exists (
+       select 1 from public.matches mt
+       where mt.id = p_match_id
+         and auth.uid() in (mt.user_one, mt.user_two)
+         and exists (select 1 from public.member_subscriptions s where s.user_id = mt.user_one and s.plan_code = 'yearly' and s.status = 'active' and s.payment_verified is true and s.ends_at > now())
+         and exists (select 1 from public.member_subscriptions s where s.user_id = mt.user_two and s.plan_code = 'yearly' and s.status = 'active' and s.payment_verified is true and s.ends_at > now())
+     );
+$function$;
+revoke all on function public.dateme_can_exchange_voice(uuid) from public;
+grant execute on function public.dateme_can_exchange_voice(uuid) to authenticated;
 
 create or replace function public.enforce_subscription_tier_chat()
 returns trigger
@@ -55,8 +70,8 @@ begin
   end if;
 
   if new.audio_path is not null then
-    if not public.dateme_voice_access(new.sender_id)
-       or not public.dateme_voice_access(v_receiver_id) then
+    if not exists (select 1 from public.member_subscriptions s where s.user_id = new.sender_id and s.plan_code = 'yearly' and s.status = 'active' and s.payment_verified is true and s.ends_at > now())
+       or not exists (select 1 from public.member_subscriptions s where s.user_id = v_receiver_id and s.plan_code = 'yearly' and s.status = 'active' and s.payment_verified is true and s.ends_at > now()) then
       raise exception 'VOICE_SUBSCRIPTION_REQUIRED: Both members need an active, verified one-year subscription to exchange voice notes.';
     end if;
     return new;
@@ -112,8 +127,8 @@ using (
       from public.matches mt
      where mt.id::text = (storage.foldername(name))[1]
        and auth.uid() in (mt.user_one, mt.user_two)
-       and public.dateme_voice_access(mt.user_one)
-       and public.dateme_voice_access(mt.user_two)
+       and exists (select 1 from public.member_subscriptions s where s.user_id = mt.user_one and s.plan_code = 'yearly' and s.status = 'active' and s.payment_verified is true and s.ends_at > now())
+       and exists (select 1 from public.member_subscriptions s where s.user_id = mt.user_two and s.plan_code = 'yearly' and s.status = 'active' and s.payment_verified is true and s.ends_at > now())
   )
 );
 
