@@ -1762,16 +1762,19 @@ export default function App() {
     setNotice(forEveryone ? 'Message deleted for everyone.' : 'Message deleted from your chat.');
   }
 
-  async function hasPaidMediaAccess(): Promise<boolean> {
-    if (!supabase || !session) return false;
-    const { data, error } = await supabase.rpc('dateme_voice_access', { p_user_id: session.user.id });
+  async function hasPaidMediaAccess(userId = session?.user.id): Promise<boolean> {
+    if (!supabase || !userId) return false;
+    const { data, error } = await supabase.rpc('dateme_voice_access', { p_user_id: userId });
     return !error && data === true;
   }
 
   async function startVoiceRecording() {
     if (recordingBusy || recording || voiceBlob) return;
     setRecordingBusy(true);
-    if (!await hasPaidMediaAccess()) { setNotice('Voice notes are available to the DateMe admin, approved test accounts, and members with an active verified one-year subscription.'); setRecordingBusy(false); return; }
+    if (!await hasPaidMediaAccess()) { setNotice('Voice notes require an active, verified one-year subscription for both people in the conversation.'); setRecordingBusy(false); return; }
+    const { data: voiceMatch } = await supabase!.from('matches').select('user_one,user_two').eq('id', activeMatchId).maybeSingle();
+    const voiceRecipientId = voiceMatch ? (voiceMatch.user_one === session!.user.id ? voiceMatch.user_two : voiceMatch.user_one) : '';
+    if (!voiceRecipientId || !await hasPaidMediaAccess(voiceRecipientId)) { setNotice('Voice notes require both you and your match to have an active, verified one-year subscription.'); setRecordingBusy(false); return; }
     if (!navigator.mediaDevices?.getUserMedia || !('MediaRecorder' in window)) { setNotice('Voice recording is not supported in this browser. Try an updated browser with microphone permission.'); setRecordingBusy(false); return; }
     try {
       // Ask the browser/OS to suppress background noise, echo, and uneven microphone levels.
