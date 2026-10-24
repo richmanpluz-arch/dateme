@@ -87,6 +87,9 @@ export default function App() {
   const [activeMatchId, setActiveMatchId] = useState('');
   const [tab, setTab] = useState<'discover' | 'likes' | 'matches' | 'profile'>('discover');
   const [searchText, setSearchText] = useState('');
+  const [minAgeFilter, setMinAgeFilter] = useState('');
+  const [maxAgeFilter, setMaxAgeFilter] = useState('');
+  const [cityFilter, setCityFilter] = useState('');
   const [blockedIds, setBlockedIds] = useState<string[]>([]);
   const [adminReports, setAdminReports] = useState<Array<{ id: string; reporter_id: string; reported_user_id: string; reason: string; details: string | null; status: string; created_at: string }>>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
@@ -415,8 +418,18 @@ export default function App() {
   }, [session, activeMatchId]);
 
   const visibleProfiles = useMemo(
-    () => (tab === 'likes' ? profiles.filter((profile) => liked.includes(profile.id)) : profiles).filter((profile) => !blockedIds.includes(profile.id) && (profile.display_name + ' ' + (profile.city || '') + ' ' + (profile.bio || '') + ' ' + (profile.interests || []).join(' ')).toLowerCase().includes(searchText.toLowerCase())),
-    [profiles, liked, tab, blockedIds, searchText],
+    () => (tab === 'likes' ? profiles.filter((profile) => liked.includes(profile.id)) : profiles).filter((profile) => {
+      if (blockedIds.includes(profile.id)) return false;
+      const searchable = (profile.display_name + ' ' + (profile.city || '') + ' ' + (profile.bio || '') + ' ' + (profile.interests || []).join(' ')).toLowerCase();
+      if (!searchable.includes(searchText.toLowerCase())) return false;
+      const minAge = minAgeFilter ? Number(minAgeFilter) : null;
+      const maxAge = maxAgeFilter ? Number(maxAgeFilter) : null;
+      if (minAge !== null && (!profile.age || profile.age < minAge)) return false;
+      if (maxAge !== null && (!profile.age || profile.age > maxAge)) return false;
+      if (cityFilter.trim() && !(profile.city || '').toLowerCase().includes(cityFilter.trim().toLowerCase())) return false;
+      return true;
+    }),
+    [profiles, liked, tab, blockedIds, searchText, minAgeFilter, maxAgeFilter, cityFilter],
   );
   const activeMatch = matches.find((match) => match.id === activeMatchId) || null;
 
@@ -758,6 +771,12 @@ export default function App() {
         {page === 'discover' && <section className="discover-section" id="discover">
           <div className="portal-page-actions discover-page-actions"><button type="button" onClick={() => { setTab('discover'); setActiveMatchId(''); setReplyTo(null); }}>← Back</button><button type="button" onClick={() => { setActiveMatchId(''); setReplyTo(null); setVoicePreview(null); setVoiceBlob(null); setTab('discover'); }}>× Close</button></div><div className="section-heading"><div><span className="eyebrow">GOOD PEOPLE, REAL POSSIBILITIES</span><h2>{session ? tab === 'matches' ? 'Your connections' : tab === 'profile' ? 'Your story, your way' : 'People you might like' : 'A little closer to your person'}</h2><p>Start with a smile. See where a conversation takes you.</p></div><span className="section-flower" aria-hidden="true">✳</span></div>
           {session && <div className="discover-search"><span>⌕</span><input aria-label="Search members" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search by name, city or interests…" /><button type="button" onClick={() => setSearchText('')}>Clear</button></div>}
+          {session && tab !== 'profile' && <div className="discover-filter-row" aria-label="Profile filters">
+            <label>City<input aria-label="Filter by city" value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} placeholder="Any city" maxLength={80} /></label>
+            <label>Minimum age<input aria-label="Minimum age" type="number" min={18} max={120} value={minAgeFilter} onChange={(e) => setMinAgeFilter(e.target.value)} placeholder="18" /></label>
+            <label>Maximum age<input aria-label="Maximum age" type="number" min={18} max={120} value={maxAgeFilter} onChange={(e) => setMaxAgeFilter(e.target.value)} placeholder="120" /></label>
+            <button type="button" onClick={() => { setCityFilter(''); setMinAgeFilter(''); setMaxAgeFilter(''); setSearchText(''); }}>Clear filters</button>
+          </div>}
           {session && <div className="member-bar"><span>Signed in as <strong>{session.user.email}</strong></span><div className="member-tabs">
             <button className={tab === 'discover' ? 'selected' : ''} onClick={() => { setTab('discover'); setActiveMatchId(''); }}>Discover</button>
             <button className={tab === 'likes' ? 'selected' : ''} onClick={() => { setTab('likes'); setActiveMatchId(''); }}>Likes ({liked.length})</button>
