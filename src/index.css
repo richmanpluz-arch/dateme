@@ -411,3 +411,5 @@ body:has(.focused-chat-overlay) { overflow:hidden; }
 .message-translation button { padding:6px 9px; border:1px solid #46627a; border-radius:7px; background:#18344b; color:var(--cream); font-size:.75rem; cursor:pointer; }
 .message-options-menu { max-height:min(70vh,420px); overflow-y:auto; }
 .message-options-menu button { white-space:normal; }
+
+.message-audio-engine { display:none; }
