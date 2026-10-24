@@ -78,6 +78,9 @@ export default function App() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageReceipts, setMessageReceipts] = useState<Record<string, MessageReceipt>>({});
+  const [activeMessageMenuId, setActiveMessageMenuId] = useState('');
+  const [voiceAccess, setVoiceAccess] = useState(false);
+  const [otherLastSeenAt, setOtherLastSeenAt] = useState<string | null>(null);
   const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
   const [translationPanel, setTranslationPanel] = useState<{ messageId: string; original: string; translated: string; loading: boolean; error: string } | null>(null);
   const [translationTarget, setTranslationTarget] = useState('en');
