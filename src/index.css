@@ -224,3 +224,12 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
 .plan-preference-controls input[type="checkbox"]:disabled { cursor: not-allowed; }
 .plan-preference-controls label:has(input:disabled) { opacity: .58; }
 .preference-save-note { margin: 2px 0 0; color: var(--muted); font-size: .8rem; }
+
+
+/* Discovery filters */
+.discover-filter-row { display:grid; grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(95px,.7fr)) auto; gap:10px; align-items:end; margin:12px 0 20px; padding:14px; border:1px solid rgba(216,182,106,.24); border-radius:14px; background:rgba(8,27,46,.72); }
+.discover-filter-row label { display:grid; gap:6px; color:var(--muted); font-size:.72rem; font-weight:700; }
+.discover-filter-row input { width:100%; min-width:0; border:1px solid #40566b; border-radius:9px; padding:10px 11px; background:#061426; color:#fff5e3; outline:none; font:inherit; }
+.discover-filter-row input:focus { border-color:var(--gold); box-shadow:0 0 0 3px #d8b66a20; }
+.discover-filter-row button { border:1px solid var(--line); border-radius:9px; padding:10px 12px; background:var(--navy-3); color:var(--gold); font-size:.74rem; font-weight:700; white-space:nowrap; }
+@media (max-width:620px) { .discover-filter-row { grid-template-columns:repeat(2,minmax(0,1fr)); } .discover-filter-row label:first-child { grid-column:1 / -1; } .discover-filter-row button { width:100%; } }
