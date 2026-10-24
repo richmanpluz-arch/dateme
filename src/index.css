@@ -120,6 +120,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .person-photo { height:100%; width:100%; object-fit:cover; display:block; }
 .photo-placeholder { height:100%; display:grid; place-items:center; color:var(--gold); font-size:5rem; background:linear-gradient(145deg,#102b43,#07192b); }
 .profile-number { position:absolute; top:13px; left:13px; border-radius:7px; background:#061426e8; border:1px solid var(--line); padding:5px 8px; font-size:.66rem; font-weight:700; color:var(--gold); }
+.profile-like-count { position:absolute; left:13px; bottom:14px; z-index:2; display:inline-flex; align-items:center; gap:5px; max-width:calc(100% - 82px); padding:7px 10px; border:1px solid #ffffff38; border-radius:999px; background:#061426e8; color:#fff; font-size:.76rem; font-weight:800; box-shadow:0 4px 14px #0005; backdrop-filter:blur(8px); }
+.profile-like-count::first-letter { color:#ff6b91; }
 .like-button { position:absolute; right:13px; bottom:13px; width:43px; height:43px; border:1px solid var(--gold); border-radius:50%; background:var(--navy); color:var(--red-bright); font-size:1.55rem; box-shadow:0 4px 14px #0005; }
 .like-button.liked { background:var(--red); color:white; }
 .person-info { padding:18px; }
