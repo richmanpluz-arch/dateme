@@ -55,6 +55,7 @@ export default function App() {
   const [selectedPlan, setSelectedPlan] = useState('week');
   const [subscriptionPortalOpen, setSubscriptionPortalOpen] = useState(false);
   const [planPreferences, setPlanPreferences] = useState<Record<string, string[]>>(() => { try { return JSON.parse(localStorage.getItem('dateme-plan-preferences') || '{}') as Record<string, string[]>; } catch { return {}; } });
+  const [preferencesLoadedFor, setPreferencesLoadedFor] = useState('');
   const [theme, setTheme] = useState<'rose' | 'navy' | 'green'>('navy');
   const [isAdmin, setIsAdmin] = useState(false);
   const [email, setEmail] = useState('');
@@ -104,8 +105,26 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!session?.user || !supabase) {
+      localStorage.setItem('dateme-plan-preferences', JSON.stringify(planPreferences));
+      return;
+    }
+    const userId = session.user.id;
+    if (preferencesLoadedFor !== userId) return;
     localStorage.setItem('dateme-plan-preferences', JSON.stringify(planPreferences));
-  }, [planPreferences]);
+    const planCodes = ['week', 'month', 'three_months', 'six_months', 'yearly'];
+    void supabase.from('member_plan_preferences').upsert(
+      planCodes.map(planCode => ({
+        user_id: userId,
+        plan_code: planCode,
+        preferences: planPreferences[planCode] || [],
+        updated_at: new Date().toISOString(),
+      })),
+      { onConflict: 'user_id,plan_code' },
+    ).then(({ error }) => {
+      if (error) setNotice('Your plan preferences are saved on this device, but account sync failed. Please try again later.');
+    });
+  }, [planPreferences, session?.user?.id, preferencesLoadedFor]);
 
   function navigateTo(nextPage: typeof page) {
     if (page !== nextPage) setPageHistory([...pageHistory.slice(-19), page]);
@@ -142,6 +161,29 @@ export default function App() {
   useEffect(() => {
     if (session?.user) setPage('discover');
     else setPage('register');
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    const client = supabase;
+    const userId = session?.user?.id;
+    if (!client || !userId) {
+      setPreferencesLoadedFor('');
+      return;
+    }
+    let cancelled = false;
+    setPreferencesLoadedFor('');
+    client.from('member_plan_preferences').select('plan_code,preferences').eq('user_id', userId)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setNotice('Could not load your saved plan preferences from your account. Your existing device settings remain available.');
+          return;
+        }
+        const saved = Object.fromEntries((data || []).map(row => [row.plan_code, row.preferences || []])) as Record<string, string[]>;
+        setPlanPreferences(saved);
+        setPreferencesLoadedFor(userId);
+      });
+    return () => { cancelled = true; };
   }, [session?.user?.id]);
 
   useEffect(() => {
@@ -783,7 +825,7 @@ export default function App() {
           {notice && session && <p className="notice member-notice" role="status">{notice}</p>}
         </section>}
 
-        {page === 'plans' && <section className="portal-page membership-section" id="membership-plans"><div className="portal-page-actions"><button onClick={goBackPage}>← Back</button><button onClick={closePage}>× Close</button></div><span className="eyebrow">YOUR JOURNEY, YOUR PACE</span><h2>Membership <span>plans.</span></h2><p>Choose a subscription period to request activation. Payments must be verified and an administrator must approve the subscription before paid features unlock.</p>{session && <p>Your current status: <strong>{subscriptionInfo?.status || 'free'}</strong> · Plan: <strong>{subscriptionInfo?.plan_code || 'free'}</strong>{subscriptionInfo?.ends_at ? ` · Ends ${new Date(subscriptionInfo.ends_at).toLocaleDateString()}` : ''}</p>}<div className="plan-periods">{[{id:'week',label:'Per Week',period:'7 days'},{id:'month',label:'Per Month',period:'1 month'},{id:'quarter',label:'3 Months',period:'3 months'},{id:'half',label:'6 Months',period:'6 months'},{id:'year',label:'1 Year',period:'12 months'}].map(plan => <button key={plan.id} className={selectedPlan===plan.id?'plan-period selected':'plan-period'} onClick={() => { setSelectedPlan(plan.id); setSubscriptionPortalOpen(true); }}>{plan.label}<small>{plan.period}</small></button>)}</div>{subscriptionPortalOpen ? <div className="plan-detail subscription-plan-detail"><div className="portal-page-actions"><button type="button" onClick={() => setSubscriptionPortalOpen(false)}>← Back to plans</button><button type="button" onClick={closePage}>× Close</button></div><span className="draft-label">DRAFT · NOT FOR SALE</span><h3>{{week:'Per Week · 7 days',month:'Per Month',quarter:'3 Months',half:'6 Months',year:'1 Year · 12 months'}[selectedPlan]}</h3><div className="draft-price">Price: <strong>To be decided</strong></div><div className="subscription-promo"><h4>Plan promotion</h4><p>{({week:'Weekly starter offer: try the essentials for one week. Final discount and eligibility are not configured yet.',month:'Monthly member offer: a longer period to build meaningful conversations. Final discount and eligibility are not configured yet.',quarter:'Quarterly connection offer: more time to get to know your matches. Final discount and eligibility are not configured yet.',half:'Six-month commitment offer: designed for members who want more time. Final discount and eligibility are not configured yet.',year:'Annual member offer: the longest subscription period. Final discount and eligibility are not configured yet.'} as Record<string,string>)[selectedPlan]}</p></div><h4>Your preferences for this plan</h4><p>Choose what you would like to use if this tier launches with these features. Your choices are saved on this device only; they are not sent to your account or applied to an active subscription.</p><div className="subscription-preferences plan-preference-controls">
+        {page === 'plans' && <section className="portal-page membership-section" id="membership-plans"><div className="portal-page-actions"><button onClick={goBackPage}>← Back</button><button onClick={closePage}>× Close</button></div><span className="eyebrow">YOUR JOURNEY, YOUR PACE</span><h2>Membership <span>plans.</span></h2><p>Choose a subscription period to request activation. Payments must be verified and an administrator must approve the subscription before paid features unlock.</p>{session && <p>Your current status: <strong>{subscriptionInfo?.status || 'free'}</strong> · Plan: <strong>{subscriptionInfo?.plan_code || 'free'}</strong>{subscriptionInfo?.ends_at ? ` · Ends ${new Date(subscriptionInfo.ends_at).toLocaleDateString()}` : ''}</p>}<div className="plan-periods">{[{id:'week',label:'Per Week',period:'7 days'},{id:'month',label:'Per Month',period:'1 month'},{id:'quarter',label:'3 Months',period:'3 months'},{id:'half',label:'6 Months',period:'6 months'},{id:'year',label:'1 Year',period:'12 months'}].map(plan => <button key={plan.id} className={selectedPlan===plan.id?'plan-period selected':'plan-period'} onClick={() => { setSelectedPlan(plan.id); setSubscriptionPortalOpen(true); }}>{plan.label}<small>{plan.period}</small></button>)}</div>{subscriptionPortalOpen ? <div className="plan-detail subscription-plan-detail"><div className="portal-page-actions"><button type="button" onClick={() => setSubscriptionPortalOpen(false)}>← Back to plans</button><button type="button" onClick={closePage}>× Close</button></div><span className="draft-label">DRAFT · NOT FOR SALE</span><h3>{{week:'Per Week · 7 days',month:'Per Month',quarter:'3 Months',half:'6 Months',year:'1 Year · 12 months'}[selectedPlan]}</h3><div className="draft-price">Price: <strong>To be decided</strong></div><div className="subscription-promo"><h4>Plan promotion</h4><p>{({week:'Weekly starter offer: try the essentials for one week. Final discount and eligibility are not configured yet.',month:'Monthly member offer: a longer period to build meaningful conversations. Final discount and eligibility are not configured yet.',quarter:'Quarterly connection offer: more time to get to know your matches. Final discount and eligibility are not configured yet.',half:'Six-month commitment offer: designed for members who want more time. Final discount and eligibility are not configured yet.',year:'Annual member offer: the longest subscription period. Final discount and eligibility are not configured yet.'} as Record<string,string>)[selectedPlan]}</p></div><h4>Your preferences for this plan</h4><p>Choose what you would like to use if this tier launches with these features. Your preferences sync to your account when signed in. These choices are saved preferences only and do not change your active subscription or unlock paid features.</p><div className="subscription-preferences plan-preference-controls">
                 <label><input type="checkbox" checked={(planPreferences[selectedPlan] || []).includes('text-chat')} onChange={() => togglePlanPreference(selectedPlan, 'text-chat')} /> Text chat {selectedPlan==='week' ? '(proposed)' : '(proposed)'}</label>
                 <label><input type="checkbox" checked={(planPreferences[selectedPlan] || []).includes('photo-sharing')} onChange={() => togglePlanPreference(selectedPlan, 'photo-sharing')} disabled={selectedPlan==='week'} /> Photo sharing {selectedPlan==='week' ? '(not proposed for this tier)' : '(proposed)'}</label>
                 <label><input type="checkbox" checked={(planPreferences[selectedPlan] || []).includes('voice-calls')} onChange={() => togglePlanPreference(selectedPlan, 'voice-calls')} disabled={selectedPlan!=='half' && selectedPlan!=='year'} /> Voice calls {selectedPlan==='half' || selectedPlan==='year' ? '(proposed)' : '(not proposed for this tier)'}</label>
