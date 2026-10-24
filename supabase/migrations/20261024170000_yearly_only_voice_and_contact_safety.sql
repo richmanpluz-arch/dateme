@@ -135,10 +135,12 @@ using (
 -- Revoke obvious phone-number strings already present in chat history.
 -- Preserve the rows and timestamps while replacing the sensitive message body.
 update public.messages
-   set body = '*********',
-       audio_path = null
+   set body = '*********'
  where audio_path is null
-   and coalesce(body, '') ~* '(\+?[0-9][0-9[:space:]().-]{6,}[0-9])';
+   and (
+     coalesce(body, '') ~* '(\+?[0-9][0-9[:space:]().-]{6,}[0-9])'
+     or coalesce(body, '') ~* '(\m(zero|one|two|three|four|five|six|seven|eight|nine|oh)([[:space:],.-]+(zero|one|two|three|four|five|six|seven|eight|nine|oh)){6,}\M)'
+   );
 
 -- Old voice messages cannot be played by non-yearly members after the storage
 -- policy above; no production deployment is performed by this migration file alone.
