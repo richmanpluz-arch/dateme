@@ -62,13 +62,13 @@ Deno.serve(async (req: Request) => {
     currency = String(payload.price_currency ?? "").toUpperCase();
   } else if (provider === "kora_1voucher") {
     const secret = Deno.env.get("KORA_SECRET_KEY");
-    const signature = req.headers.get("Kora-Signature") ?? "";
+    const signature = req.headers.get("x-korapay-signature") ?? "";
     if (!secret || !signature) return new Response("Missing signature", { status: 401 });
-    const expected = await hmac(secret, raw, "SHA-256");
-    if (!safeEqual(expected.toLowerCase(), signature.toLowerCase())) return new Response("Invalid signature", { status: 401 });
     const data = (payload.data ?? {}) as Record<string, unknown>;
-    reference = String(data.reference ?? "");
-    paymentId = reference;
+    const expected = await hmac(secret, JSON.stringify(data), "SHA-256");
+    if (!safeEqual(expected.toLowerCase(), signature.toLowerCase())) return new Response("Invalid signature", { status: 401 });
+    reference = String(data.payment_reference ?? data.reference ?? "");
+    paymentId = String(data.reference ?? data.transaction_reference ?? reference);
     const status = String(data.status ?? payload.event ?? "").toLowerCase();
     successful = ["success", "successful", "completed", "charge.success"].includes(status);
     failed = ["failed", "failure", "charge.failed"].includes(status);
