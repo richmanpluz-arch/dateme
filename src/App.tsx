@@ -1661,6 +1661,7 @@ export default function App() {
     const { data, error } = await supabase!.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
     if (error) {
       if (error.message?.includes('ACCOUNT_SUSPENDED_24H')) setNotice('Your account has been suspended for 24 hours. Contact the DateMe administrator.');
+      else if (error.message?.includes('CONTACT_DETAILS_BLOCKED')) setNotice('Phone numbers and contact details are not allowed in DateMe chat, including numbers written as words.');
       else setNotice('Message could not be sent. Messaging is only available to matched members.');
       return;
     }
@@ -1762,19 +1763,16 @@ export default function App() {
     setNotice(forEveryone ? 'Message deleted for everyone.' : 'Message deleted from your chat.');
   }
 
-  async function hasPaidMediaAccess(userId = session?.user.id): Promise<boolean> {
-    if (!supabase || !userId) return false;
-    const { data, error } = await supabase.rpc('dateme_voice_access', { p_user_id: userId });
+  async function hasPaidMediaAccess(matchId = activeMatchId): Promise<boolean> {
+    if (!supabase || !session || !matchId) return false;
+    const { data, error } = await supabase.rpc('dateme_can_exchange_voice', { p_match_id: matchId });
     return !error && data === true;
   }
 
   async function startVoiceRecording() {
     if (recordingBusy || recording || voiceBlob) return;
     setRecordingBusy(true);
-    if (!await hasPaidMediaAccess()) { setNotice('Voice notes require an active, verified one-year subscription for both people in the conversation.'); setRecordingBusy(false); return; }
-    const { data: voiceMatch } = await supabase!.from('matches').select('user_one,user_two').eq('id', activeMatchId).maybeSingle();
-    const voiceRecipientId = voiceMatch ? (voiceMatch.user_one === session!.user.id ? voiceMatch.user_two : voiceMatch.user_one) : '';
-    if (!voiceRecipientId || !await hasPaidMediaAccess(voiceRecipientId)) { setNotice('Voice notes require both you and your match to have an active, verified one-year subscription.'); setRecordingBusy(false); return; }
+    if (!await hasPaidMediaAccess()) { setNotice('Voice notes require both you and your match to have active, verified one-year subscriptions.'); setRecordingBusy(false); return; }
     if (!navigator.mediaDevices?.getUserMedia || !('MediaRecorder' in window)) { setNotice('Voice recording is not supported in this browser. Try an updated browser with microphone permission.'); setRecordingBusy(false); return; }
     try {
       // Ask the browser/OS to suppress background noise, echo, and uneven microphone levels.
@@ -1829,10 +1827,10 @@ export default function App() {
     setNotice('');
     let uploadedPath: string | null = null;
     try {
-      const { data: canSendVoice, error: accessError } = await supabase.rpc('dateme_voice_access', { p_user_id: session.user.id });
-      if (accessError) throw new Error(`Could not verify voice-note access: ${accessError.message}`);
+      const { data: canSendVoice, error: accessError } = await supabase.rpc('dateme_can_exchange_voice', { p_match_id: activeMatchId });
+      if (accessError) throw new Error(`Could not verify yearly voice-note eligibility: ${accessError.message}`);
       if (canSendVoice !== true) {
-        setNotice('Voice notes require both you and your match to have an active, verified one-year subscription.');
+        setNotice('Voice notes require both you and your match to have active, verified one-year subscriptions.');
         return;
       }
       if (voiceBlob.size > 5 * 1024 * 1024) {
