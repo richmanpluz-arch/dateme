@@ -1013,34 +1013,56 @@ export default function App() {
   }
 
   async function sendVoiceNote() {
-    if (!supabase || !session || !activeMatchId || !voiceBlob) return;
-    if (!await hasPaidMediaAccess()) { setNotice('Voice notes are available to the DateMe admin, approved test accounts, and members with an active verified one-year subscription.'); setRecordingBusy(false); return; }
-    if (voiceBlob.size > 5 * 1024 * 1024) {
-      setNotice('That voice note is too large. Please record a shorter note (maximum 5 MB).');
-      return;
-    }
+    if (!supabase || !session || !activeMatchId || !voiceBlob || recordingBusy) return;
     setRecordingBusy(true);
-    const { data: matchRow } = await supabase!.from('matches').select('user_one, user_two').eq('id', activeMatchId).maybeSingle();
-    if (!matchRow || ![matchRow.user_one, matchRow.user_two].includes(session.user.id)) {
-      setNotice('This conversation is no longer available.');
+    setNotice('');
+    let uploadedPath: string | null = null;
+    try {
+      if (!await hasPaidMediaAccess()) {
+        setNotice('Voice notes are available to the DateMe admin, approved test accounts, and members with an active verified one-year subscription.');
+        return;
+      }
+      if (voiceBlob.size > 5 * 1024 * 1024) {
+        setNotice('That voice note is too large. Please record a shorter note (maximum 5 MB).');
+        return;
+      }
+      const { data: matchRow, error: matchError } = await supabase.from('matches').select('user_one, user_two').eq('id', activeMatchId).maybeSingle();
+      if (matchError) throw new Error(`Could not verify this conversation: ${matchError.message}`);
+      if (!matchRow || ![matchRow.user_one, matchRow.user_two].includes(session.user.id)) {
+        setNotice('This conversation is no longer available.');
+        return;
+      }
+      const otherUserId = matchRow.user_one === session.user.id ? matchRow.user_two : matchRow.user_one;
+      const { data: blockRows, error: blockError } = await supabase.from('member_blocks').select('id').or(`and(blocker_id.eq.${session.user.id},blocked_user_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_user_id.eq.${session.user.id})`).limit(1);
+      if (blockError) throw new Error(`Could not check chat permissions: ${blockError.message}`);
+      if (blockRows?.length) {
+        setNotice('Sending voice notes is unavailable because one of these accounts has blocked the other.');
+        return;
+      }
+
+      const mimeType = voiceBlob.type || 'audio/webm';
+      const extension = mimeType.includes('mp4') ? 'm4a' : mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mpeg') ? 'mp3' : 'webm';
+      const path = `${activeMatchId}/${session.user.id}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage.from('dateme-voice-notes').upload(path, voiceBlob, { contentType: mimeType, upsert: false });
+      if (uploadError) throw new Error(`Voice note upload failed: ${uploadError.message}. Check the voice-note storage bucket and permissions.`);
+      uploadedPath = path;
+
+      const { data, error } = await supabase.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body: '🎙️ Voice note', audio_path: path, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
+      if (error) throw new Error(`Voice note uploaded but the chat message could not be saved: ${error.message}`);
+      if (data) setMessages((current) => current.some((item) => item.id === data.id) ? current : [...current, data as Message]);
+      if (voicePreview) URL.revokeObjectURL(voicePreview);
+      setVoicePreview(null);
+      setVoiceBlob(null);
+      setReplyTo(null);
+      setNotice('Voice note sent.');
+    } catch (error) {
+      if (uploadedPath && supabase) {
+        await supabase.storage.from('dateme-voice-notes').remove([uploadedPath]).catch(() => undefined);
+      }
+      setNotice(error instanceof Error ? error.message : 'Could not send the voice note. Your recording is still available to retry.');
+    } finally {
       setRecordingBusy(false);
-      return;
     }
-    const otherUserId = matchRow.user_one === session.user.id ? matchRow.user_two : matchRow.user_one;
-    const { data: blockRows } = await supabase!.from('member_blocks').select('id').or(`and(blocker_id.eq.${session.user.id},blocked_user_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_user_id.eq.${session.user.id})`).limit(1);
-    if (blockRows?.length) {
-      setNotice('Sending voice notes is unavailable because one of these accounts has blocked the other.');
-      setRecordingBusy(false);
-      return;
-    }
-    const path = `${activeMatchId}/${session.user.id}/${crypto.randomUUID()}.webm`;
-    const { error: uploadError } = await supabase!.storage.from('dateme-voice-notes').upload(path, voiceBlob, { contentType: voiceBlob.type || 'audio/webm', upsert: false });
-    if (uploadError) { setNotice('Voice note upload is not ready yet. Please check the voice-note storage bucket setup.'); setRecordingBusy(false); return; }
-    const { data, error } = await supabase!.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body: '🎙️ Voice note', audio_path: path, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
-    if (error) setNotice('Could not send the voice note.');
-    else if (data) setMessages((current) => current.some((item) => item.id === data.id) ? current : [...current, data as Message]);
-    if (voicePreview) URL.revokeObjectURL(voicePreview);
-    setVoicePreview(null); setVoiceBlob(null); setReplyTo(null); setRecordingBusy(false);
   }
 
   function openChat(match: Match) {
