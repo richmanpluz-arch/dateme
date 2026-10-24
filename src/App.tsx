@@ -831,7 +831,7 @@ export default function App() {
             <label>Maximum age<input aria-label="Maximum age" type="number" min={18} max={120} value={maxAgeFilter} onChange={(e) => setMaxAgeFilter(e.target.value)} placeholder="120" /></label>
             <button type="button" onClick={() => { setCityFilter(''); setMinAgeFilter(''); setMaxAgeFilter(''); setSearchText(''); }}>Clear filters</button>
             {ageFilterError && <p className="filter-validation" role="alert">{ageFilterError}</p>}
-          </div>
+          </div>}
           {session && tab !== 'profile' && !ageFilterError && <p className="filter-result-count" role="status">Showing {visibleProfiles.length} {visibleProfiles.length === 1 ? 'profile' : 'profiles'}{tab === 'likes' ? ' you liked' : ''}.</p>}
           {session && <div className="member-bar"><span>Signed in as <strong>{session.user.email}</strong></span><div className="member-tabs">
             <button className={tab === 'discover' ? 'selected' : ''} onClick={() => { setTab('discover'); setActiveMatchId(''); }}>Discover</button>
