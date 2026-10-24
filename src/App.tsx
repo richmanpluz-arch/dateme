@@ -478,7 +478,7 @@ export default function App() {
     setTranslationBusyId(message.id);
     setOpenMessageMenuId(null);
     try {
-      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(message.body.slice(0, 350))}&langpair=autodetect|${encodeURIComponent(translationLanguage)}`);
+      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(message.body.slice(0, 120))}&langpair=autodetect|${encodeURIComponent(translationLanguage)}`);
       if (!response.ok) throw new Error('Translation service unavailable');
       const payload = await response.json() as { responseStatus?: number; responseData?: { translatedText?: string }; responseDetails?: string };
       const translated = payload.responseData?.translatedText;
