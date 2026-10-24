@@ -386,3 +386,23 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
 .chat-translation-launch .speech-translate-button { background:#176b52; border-color:#4aab8b; }
 .speech-transcript { flex-basis:100%; margin:0; padding:9px 10px; border-radius:8px; background:#061c28; color:#dbeee7; font-size:.8rem; line-height:1.5; }
 @media(max-width:620px) { .translation-language-pair { display:grid; grid-template-columns:1fr 1fr; } .translation-language-pair select { min-width:0; width:100%; } .translation-launch-actions { width:100%; } .translation-launch-actions button { flex:1 1 auto; } }
+
+
+/* Per-message translation controls: compact, anchored below each bubble. */
+.message-bubble { overflow:visible; }
+.message-menu-below { display:block; width:max-content; max-width:100%; margin:5px 0 0; }
+.message-menu-below summary { display:grid; place-items:center; width:26px; height:22px; text-align:center; border:1px solid rgba(195,220,209,.18); border-radius:7px; background:#0a2832; color:#d7eee4; font-size:1.1rem; }
+.message-menu-below[open] { position:relative; z-index:30; }
+.message-menu-below .message-menu-content { position:absolute; z-index:35; left:0; top:25px; width:min(280px, calc(100vw - 64px)); max-height:min(60dvh, 420px); overflow-y:auto; padding:8px; border:1px solid #315d5a; border-radius:11px; background:#08232d; box-shadow:0 12px 30px #0008; }
+.message-menu-below .message-actions { display:flex; flex-direction:column; gap:4px; margin:0 0 8px; }
+.message-menu-below .message-actions button { width:100%; text-align:left; padding:8px 10px; font-size:.74rem; }
+.translation-menu-controls { display:grid; gap:8px; padding-top:8px; border-top:1px solid #315d5a; }
+.translation-menu-controls > p { margin:0; color:#b8d4cb; font-size:.72rem; font-weight:700; }
+.translation-menu-controls label { display:grid; gap:4px; color:#cfe4dd; font-size:.69rem; font-weight:700; }
+.translation-menu-controls select { width:100%; min-width:0; padding:8px 9px; border:1px solid #316c67; border-radius:8px; background:#071b2b; color:#f3f6f4; font:inherit; }
+.translation-action-button { width:100%; border:1px solid #347d69; border-radius:8px; padding:8px 9px; background:#126548; color:#fff; font-size:.74rem; font-weight:700; }
+.translation-menu-controls .speech-translate-button { background:#176b52; border-color:#4aab8b; }
+.message-translation-panel { width:min(100%, 390px); max-width:100%; margin:8px 0 4px; padding:10px; }
+.message-translation-panel .translation-panel-title { gap:8px; flex-wrap:wrap; font-size:.78rem; }
+.message-translation-panel .translation-original,.message-translation-panel .translation-result { font-size:.76rem; }
+@media(max-width:620px) { .message-menu-below .message-menu-content { width:min(270px, calc(100vw - 52px)); } .message-translation-panel { width:100%; } }
