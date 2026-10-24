@@ -324,3 +324,20 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
   .chat-messages { max-height:calc(100vh - 320px); }
   .match-list h3 { font-size:.98rem; }
 }
+
+
+/* Focused chat opened from a profile envelope: show only that conversation */
+.match-layout.focused-chat-only { display:grid; grid-template-columns:minmax(0,1fr); gap:0; max-width:900px; margin-inline:auto; }
+.focused-chat-only .match-list { display:none; }
+.focused-chat-only .chat-panel { min-height:clamp(420px,68vh,760px); border-radius:16px; padding:16px; }
+.focused-chat-only .chat-heading { gap:12px; padding-bottom:14px; }
+.chat-back-button { display:grid; place-items:center; flex-shrink:0; width:36px; height:36px; border:1px solid var(--line); border-radius:50%; background:var(--navy-2); color:var(--cream); font-size:1.8rem; line-height:1; }
+.focused-chat-only .chat-messages { max-height:none; flex:1; }
+@media (max-width:680px) {
+  .match-layout.focused-chat-only { margin:0; }
+  .focused-chat-only .chat-panel { min-height:calc(100dvh - 230px); padding:10px; }
+  .focused-chat-only .chat-messages { max-height:none; }
+}
+@media (orientation:landscape) and (max-height:600px) {
+  .focused-chat-only .chat-panel { min-height:calc(100dvh - 155px); }
+}
