@@ -77,7 +77,9 @@ Deno.serve(async (req: Request) => {
   }).select("id").single();
   if (insertError || !order) return json(500, { error: "Could not start checkout. Please try again." });
 
-  const appUrl = (Deno.env.get("APP_URL") ?? "https://dateme.app").replace(/\/$/, "");
+  const configuredAppUrl = Deno.env.get("APP_URL");
+  if (!configuredAppUrl) throw new Error("The app return URL is not configured.");
+  const appUrl = configuredAppUrl.replace(/\/$/, "");
   const callbackUrl = `${supabaseUrl}/functions/v1/payment-webhook?provider=${provider}`;
   try {
     if (provider === "nowpayments") {
