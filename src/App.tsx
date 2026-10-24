@@ -27,6 +27,669 @@ const aiProfiles: Profile[] = [
 ];
 const contactPattern = /(?:https?:\/\/|www\.|\b[a-z0-9.-]+\.(?:com|net|org|co\.za|io)\b|\b(?:whats?app|telegram|facebook|instagram|snapchat|tiktok|signal|wechat|dm me|contact me|message me outside|email me|call me|text me)\b|(?:\+?\d[\d\s().-]{6,}\d))/i;
 const demoReplies = ['That sounds lovely 😊 What do you enjoy doing on a free day?', 'I like that! Tell me a little more about it.', 'A good conversation is a great start 💛 What would your ideal first date look like?', 'Nice! I would add a coffee stop to that plan ☕'];
+const translationLanguages: Array<{ code: string; name: string; speech: string }> = [
+  {
+    "code": "af",
+    "name": "Afrikaans",
+    "speech": "af-ZA"
+  },
+  {
+    "code": "sq",
+    "name": "Albanian",
+    "speech": "sq-AL"
+  },
+  {
+    "code": "am",
+    "name": "Amharic",
+    "speech": "am-ET"
+  },
+  {
+    "code": "ar",
+    "name": "Arabic",
+    "speech": "ar-SA"
+  },
+  {
+    "code": "hy",
+    "name": "Armenian",
+    "speech": "hy-AM"
+  },
+  {
+    "code": "as",
+    "name": "Assamese",
+    "speech": "as-IN"
+  },
+  {
+    "code": "ay",
+    "name": "Aymara",
+    "speech": "ay-BO"
+  },
+  {
+    "code": "az",
+    "name": "Azerbaijani",
+    "speech": "az-AZ"
+  },
+  {
+    "code": "bm",
+    "name": "Bambara",
+    "speech": "bm-ML"
+  },
+  {
+    "code": "eu",
+    "name": "Basque",
+    "speech": "eu-ES"
+  },
+  {
+    "code": "be",
+    "name": "Belarusian",
+    "speech": "be-BY"
+  },
+  {
+    "code": "bn",
+    "name": "Bengali",
+    "speech": "bn-IN"
+  },
+  {
+    "code": "bho",
+    "name": "Bhojpuri",
+    "speech": "bho-IN"
+  },
+  {
+    "code": "bs",
+    "name": "Bosnian",
+    "speech": "bs-BA"
+  },
+  {
+    "code": "bg",
+    "name": "Bulgarian",
+    "speech": "bg-BG"
+  },
+  {
+    "code": "my",
+    "name": "Burmese",
+    "speech": "my-MM"
+  },
+  {
+    "code": "ca",
+    "name": "Catalan",
+    "speech": "ca-ES"
+  },
+  {
+    "code": "ceb",
+    "name": "Cebuano",
+    "speech": "ceb-PH"
+  },
+  {
+    "code": "ny",
+    "name": "Chichewa",
+    "speech": "ny-MW"
+  },
+  {
+    "code": "zh-CN",
+    "name": "Chinese (Simplified)",
+    "speech": "zh-CN"
+  },
+  {
+    "code": "zh-TW",
+    "name": "Chinese (Traditional)",
+    "speech": "zh-TW"
+  },
+  {
+    "code": "co",
+    "name": "Corsican",
+    "speech": "co-FR"
+  },
+  {
+    "code": "hr",
+    "name": "Croatian",
+    "speech": "hr-HR"
+  },
+  {
+    "code": "cs",
+    "name": "Czech",
+    "speech": "cs-CZ"
+  },
+  {
+    "code": "da",
+    "name": "Danish",
+    "speech": "da-DK"
+  },
+  {
+    "code": "dv",
+    "name": "Dhivehi",
+    "speech": "dv-MV"
+  },
+  {
+    "code": "doi",
+    "name": "Dogri",
+    "speech": "doi-IN"
+  },
+  {
+    "code": "nl",
+    "name": "Dutch",
+    "speech": "nl-NL"
+  },
+  {
+    "code": "en",
+    "name": "English",
+    "speech": "en-US"
+  },
+  {
+    "code": "eo",
+    "name": "Esperanto",
+    "speech": "eo"
+  },
+  {
+    "code": "et",
+    "name": "Estonian",
+    "speech": "et-EE"
+  },
+  {
+    "code": "ee",
+    "name": "Ewe",
+    "speech": "ee-GH"
+  },
+  {
+    "code": "fil",
+    "name": "Filipino",
+    "speech": "fil-PH"
+  },
+  {
+    "code": "fi",
+    "name": "Finnish",
+    "speech": "fi-FI"
+  },
+  {
+    "code": "fr",
+    "name": "French",
+    "speech": "fr-FR"
+  },
+  {
+    "code": "fy",
+    "name": "Frisian",
+    "speech": "fy-NL"
+  },
+  {
+    "code": "gl",
+    "name": "Galician",
+    "speech": "gl-ES"
+  },
+  {
+    "code": "ka",
+    "name": "Georgian",
+    "speech": "ka-GE"
+  },
+  {
+    "code": "de",
+    "name": "German",
+    "speech": "de-DE"
+  },
+  {
+    "code": "el",
+    "name": "Greek",
+    "speech": "el-GR"
+  },
+  {
+    "code": "gn",
+    "name": "Guarani",
+    "speech": "gn-PY"
+  },
+  {
+    "code": "gu",
+    "name": "Gujarati",
+    "speech": "gu-IN"
+  },
+  {
+    "code": "ht",
+    "name": "Haitian Creole",
+    "speech": "ht-HT"
+  },
+  {
+    "code": "ha",
+    "name": "Hausa",
+    "speech": "ha-NG"
+  },
+  {
+    "code": "haw",
+    "name": "Hawaiian",
+    "speech": "haw-US"
+  },
+  {
+    "code": "he",
+    "name": "Hebrew",
+    "speech": "he-IL"
+  },
+  {
+    "code": "hi",
+    "name": "Hindi",
+    "speech": "hi-IN"
+  },
+  {
+    "code": "hmn",
+    "name": "Hmong",
+    "speech": "hmn"
+  },
+  {
+    "code": "hu",
+    "name": "Hungarian",
+    "speech": "hu-HU"
+  },
+  {
+    "code": "is",
+    "name": "Icelandic",
+    "speech": "is-IS"
+  },
+  {
+    "code": "ig",
+    "name": "Igbo",
+    "speech": "ig-NG"
+  },
+  {
+    "code": "ilo",
+    "name": "Ilocano",
+    "speech": "ilo-PH"
+  },
+  {
+    "code": "id",
+    "name": "Indonesian",
+    "speech": "id-ID"
+  },
+  {
+    "code": "ga",
+    "name": "Irish",
+    "speech": "ga-IE"
+  },
+  {
+    "code": "it",
+    "name": "Italian",
+    "speech": "it-IT"
+  },
+  {
+    "code": "ja",
+    "name": "Japanese",
+    "speech": "ja-JP"
+  },
+  {
+    "code": "jv",
+    "name": "Javanese",
+    "speech": "jv-ID"
+  },
+  {
+    "code": "kn",
+    "name": "Kannada",
+    "speech": "kn-IN"
+  },
+  {
+    "code": "kk",
+    "name": "Kazakh",
+    "speech": "kk-KZ"
+  },
+  {
+    "code": "km",
+    "name": "Khmer",
+    "speech": "km-KH"
+  },
+  {
+    "code": "rw",
+    "name": "Kinyarwanda",
+    "speech": "rw-RW"
+  },
+  {
+    "code": "gom",
+    "name": "Konkani",
+    "speech": "gom-IN"
+  },
+  {
+    "code": "ko",
+    "name": "Korean",
+    "speech": "ko-KR"
+  },
+  {
+    "code": "kri",
+    "name": "Krio",
+    "speech": "kri-SL"
+  },
+  {
+    "code": "ku",
+    "name": "Kurdish",
+    "speech": "ku-IQ"
+  },
+  {
+    "code": "ky",
+    "name": "Kyrgyz",
+    "speech": "ky-KG"
+  },
+  {
+    "code": "lo",
+    "name": "Lao",
+    "speech": "lo-LA"
+  },
+  {
+    "code": "la",
+    "name": "Latin",
+    "speech": "la"
+  },
+  {
+    "code": "lv",
+    "name": "Latvian",
+    "speech": "lv-LV"
+  },
+  {
+    "code": "ln",
+    "name": "Lingala",
+    "speech": "ln-CD"
+  },
+  {
+    "code": "lt",
+    "name": "Lithuanian",
+    "speech": "lt-LT"
+  },
+  {
+    "code": "lg",
+    "name": "Luganda",
+    "speech": "lg-UG"
+  },
+  {
+    "code": "lb",
+    "name": "Luxembourgish",
+    "speech": "lb-LU"
+  },
+  {
+    "code": "mk",
+    "name": "Macedonian",
+    "speech": "mk-MK"
+  },
+  {
+    "code": "mai",
+    "name": "Maithili",
+    "speech": "mai-IN"
+  },
+  {
+    "code": "mg",
+    "name": "Malagasy",
+    "speech": "mg-MG"
+  },
+  {
+    "code": "ms",
+    "name": "Malay",
+    "speech": "ms-MY"
+  },
+  {
+    "code": "ml",
+    "name": "Malayalam",
+    "speech": "ml-IN"
+  },
+  {
+    "code": "mt",
+    "name": "Maltese",
+    "speech": "mt-MT"
+  },
+  {
+    "code": "mi",
+    "name": "Maori",
+    "speech": "mi-NZ"
+  },
+  {
+    "code": "mr",
+    "name": "Marathi",
+    "speech": "mr-IN"
+  },
+  {
+    "code": "mni-Mtei",
+    "name": "Meiteilon (Manipuri)",
+    "speech": "mni-IN"
+  },
+  {
+    "code": "lus",
+    "name": "Mizo",
+    "speech": "lus-IN"
+  },
+  {
+    "code": "mn",
+    "name": "Mongolian",
+    "speech": "mn-MN"
+  },
+  {
+    "code": "ne",
+    "name": "Nepali",
+    "speech": "ne-NP"
+  },
+  {
+    "code": "nso",
+    "name": "Northern Sotho",
+    "speech": "nso-ZA"
+  },
+  {
+    "code": "no",
+    "name": "Norwegian",
+    "speech": "nb-NO"
+  },
+  {
+    "code": "or",
+    "name": "Odia",
+    "speech": "or-IN"
+  },
+  {
+    "code": "om",
+    "name": "Oromo",
+    "speech": "om-ET"
+  },
+  {
+    "code": "ps",
+    "name": "Pashto",
+    "speech": "ps-AF"
+  },
+  {
+    "code": "fa",
+    "name": "Persian",
+    "speech": "fa-IR"
+  },
+  {
+    "code": "pl",
+    "name": "Polish",
+    "speech": "pl-PL"
+  },
+  {
+    "code": "pt",
+    "name": "Portuguese",
+    "speech": "pt-PT"
+  },
+  {
+    "code": "pa",
+    "name": "Punjabi",
+    "speech": "pa-IN"
+  },
+  {
+    "code": "qu",
+    "name": "Quechua",
+    "speech": "qu-PE"
+  },
+  {
+    "code": "ro",
+    "name": "Romanian",
+    "speech": "ro-RO"
+  },
+  {
+    "code": "ru",
+    "name": "Russian",
+    "speech": "ru-RU"
+  },
+  {
+    "code": "sm",
+    "name": "Samoan",
+    "speech": "sm-WS"
+  },
+  {
+    "code": "sa",
+    "name": "Sanskrit",
+    "speech": "sa-IN"
+  },
+  {
+    "code": "gd",
+    "name": "Scots Gaelic",
+    "speech": "gd-GB"
+  },
+  {
+    "code": "sr",
+    "name": "Serbian",
+    "speech": "sr-RS"
+  },
+  {
+    "code": "st",
+    "name": "Sesotho",
+    "speech": "st-ZA"
+  },
+  {
+    "code": "sn",
+    "name": "Shona",
+    "speech": "sn-ZW"
+  },
+  {
+    "code": "sd",
+    "name": "Sindhi",
+    "speech": "sd-PK"
+  },
+  {
+    "code": "si",
+    "name": "Sinhala",
+    "speech": "si-LK"
+  },
+  {
+    "code": "sk",
+    "name": "Slovak",
+    "speech": "sk-SK"
+  },
+  {
+    "code": "sl",
+    "name": "Slovenian",
+    "speech": "sl-SI"
+  },
+  {
+    "code": "so",
+    "name": "Somali",
+    "speech": "so-SO"
+  },
+  {
+    "code": "es",
+    "name": "Spanish",
+    "speech": "es-ES"
+  },
+  {
+    "code": "su",
+    "name": "Sundanese",
+    "speech": "su-ID"
+  },
+  {
+    "code": "sw",
+    "name": "Swahili",
+    "speech": "sw-KE"
+  },
+  {
+    "code": "sv",
+    "name": "Swedish",
+    "speech": "sv-SE"
+  },
+  {
+    "code": "tg",
+    "name": "Tajik",
+    "speech": "tg-TJ"
+  },
+  {
+    "code": "ta",
+    "name": "Tamil",
+    "speech": "ta-IN"
+  },
+  {
+    "code": "tt",
+    "name": "Tatar",
+    "speech": "tt-RU"
+  },
+  {
+    "code": "te",
+    "name": "Telugu",
+    "speech": "te-IN"
+  },
+  {
+    "code": "th",
+    "name": "Thai",
+    "speech": "th-TH"
+  },
+  {
+    "code": "ti",
+    "name": "Tigrinya",
+    "speech": "ti-ET"
+  },
+  {
+    "code": "ts",
+    "name": "Tsonga",
+    "speech": "ts-ZA"
+  },
+  {
+    "code": "tr",
+    "name": "Turkish",
+    "speech": "tr-TR"
+  },
+  {
+    "code": "tk",
+    "name": "Turkmen",
+    "speech": "tk-TM"
+  },
+  {
+    "code": "ak",
+    "name": "Twi",
+    "speech": "ak-GH"
+  },
+  {
+    "code": "uk",
+    "name": "Ukrainian",
+    "speech": "uk-UA"
+  },
+  {
+    "code": "ur",
+    "name": "Urdu",
+    "speech": "ur-PK"
+  },
+  {
+    "code": "ug",
+    "name": "Uyghur",
+    "speech": "ug-CN"
+  },
+  {
+    "code": "uz",
+    "name": "Uzbek",
+    "speech": "uz-UZ"
+  },
+  {
+    "code": "vi",
+    "name": "Vietnamese",
+    "speech": "vi-VN"
+  },
+  {
+    "code": "cy",
+    "name": "Welsh",
+    "speech": "cy-GB"
+  },
+  {
+    "code": "xh",
+    "name": "isiXhosa",
+    "speech": "xh-ZA"
+  },
+  {
+    "code": "yi",
+    "name": "Yiddish",
+    "speech": "yi"
+  },
+  {
+    "code": "yo",
+    "name": "Yoruba",
+    "speech": "yo-NG"
+  },
+  {
+    "code": "zu",
+    "name": "isiZulu",
+    "speech": "zu-ZA"
+  }
+];
+
 const emptyProfile = (id: string, name = ''): Profile => ({ id, display_name: name, age: null, city: '', bio: '', photo_url: '' });
 
 function DateMeLogo() {
@@ -101,6 +764,7 @@ export default function App() {
   const [voicePreview, setVoicePreview] = useState<string | null>(null);
   const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
   const [voiceUrls, setVoiceUrls] = useState<Record<string, string>>({});
+  const sendingVoiceRef = useRef(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recorderChunksRef = useRef<BlobPart[]>([]);
   const [activeMatchId, setActiveMatchId] = useState('');
@@ -1013,12 +1677,15 @@ export default function App() {
   }
 
   async function sendVoiceNote() {
-    if (!supabase || !session || !activeMatchId || !voiceBlob || recordingBusy) return;
+    if (!supabase || !session || !activeMatchId || !voiceBlob || recordingBusy || sendingVoiceRef.current) return;
+    sendingVoiceRef.current = true;
     setRecordingBusy(true);
     setNotice('');
     let uploadedPath: string | null = null;
     try {
-      if (!await hasPaidMediaAccess()) {
+      const { data: canSendVoice, error: accessError } = await supabase.rpc('dateme_voice_access', { p_user_id: session.user.id });
+      if (accessError) throw new Error(`Could not verify voice-note access: ${accessError.message}`);
+      if (canSendVoice !== true) {
         setNotice('Voice notes are available to the DateMe admin, approved test accounts, and members with an active verified one-year subscription.');
         return;
       }
@@ -1041,7 +1708,9 @@ export default function App() {
       }
 
       const mimeType = (voiceBlob.type || 'audio/webm').split(';')[0].trim().toLowerCase();
-      const extension = mimeType.includes('mp4') ? 'm4a' : mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mpeg') ? 'mp3' : 'webm';
+      const allowedVoiceTypes = new Set(['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/mpeg', 'audio/wav', 'audio/aac', 'audio/x-m4a']);
+      if (!allowedVoiceTypes.has(mimeType)) throw new Error(`This browser recorded ${mimeType || 'an unknown audio format'}, which the voice-note storage does not accept. Try Chrome on Android or another supported browser.`);
+      const extension = mimeType.includes('mp4') || mimeType.includes('m4a') ? 'm4a' : mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mpeg') ? 'mp3' : mimeType.includes('wav') ? 'wav' : mimeType.includes('aac') ? 'aac' : 'webm';
       const path = `${activeMatchId}/${session.user.id}/${crypto.randomUUID()}.${extension}`;
       const { error: uploadError } = await supabase.storage.from('dateme-voice-notes').upload(path, voiceBlob, { contentType: mimeType, upsert: false });
       if (uploadError) throw new Error(`Voice note upload failed: ${uploadError.message}. Check the voice-note storage bucket and permissions.`);
@@ -1061,6 +1730,7 @@ export default function App() {
       }
       setNotice(error instanceof Error ? error.message : 'Could not send the voice note. Your recording is still available to retry.');
     } finally {
+      sendingVoiceRef.current = false;
       setRecordingBusy(false);
     }
   }
@@ -1191,7 +1861,7 @@ export default function App() {
             <section className="chat-panel">{activeMatch ? <>
               <div className="chat-heading"><button type="button" className="chat-back-button" aria-label="Back to matches" onClick={() => { setActiveMatchId(''); setReplyTo(null); setTranslationPanel(null); }}>←</button><span className="match-avatar">{activePerson?.photo_url ? <img src={activePerson.photo_url} alt="" /> : '♡'}</span><div className="chat-heading-person"><strong>{activePerson?.display_name || 'Your match'}</strong><small>● Private conversation · messages expire after 24 hours</small></div><button type="button" className="chat-header-more" title="Close conversation" onClick={() => { setActiveMatchId(''); setReplyTo(null); setTranslationPanel(null); }}>×</button></div>
               <div className="chat-tools-note">🔒 Private chat · messages expire after 24 hours</div>
-              <div className="chat-messages">{messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).map((message) => { const mine = message.sender_id === session.user.id; const receipt = messageReceipts[message.id]; return <div key={message.id} className={mine ? 'message-bubble mine' : 'message-bubble'}>{message.reply_to && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.deleted_at ? <p className="deleted-message">{message.body || 'This message was deleted'}</p> : message.audio_path && supabase ? <audio controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{mine && !message.deleted_at && <span className={receipt?.read_at ? 'message-status read' : receipt?.delivered_at ? 'message-status delivered' : 'message-status sent'} title={receipt?.read_at ? 'Read' : receipt?.delivered_at ? 'Delivered' : 'Sent'} aria-label={receipt?.read_at ? 'Read' : receipt?.delivered_at ? 'Delivered' : 'Sent'}>{receipt?.read_at ? '●' : receipt?.delivered_at ? '●' : '·'}</span>} {!message.deleted_at && ' · disappears in 24h'}</time>{translationPanel?.messageId === message.id && <aside className="translation-panel message-translation-panel" aria-live="polite"><div className="translation-panel-title"><strong>Translation</strong>{translationPanel.sourceLanguage && <small>Detected: {translationPanel.sourceLanguage.toUpperCase()}</small>}<button type="button" onClick={() => setTranslationPanel(null)} aria-label="Close translation">×</button></div><p className="translation-original"><small>Original</small>{translationPanel.original}</p><p className="translation-result"><small>Translated</small>{translationPanel.loading ? 'Translating…' : translationPanel.error || translationPanel.translated}</p></aside>}<details className="message-menu message-menu-below"><summary aria-label="Message options" title="Message options">⋮</summary><div className="message-menu-content"><div className="message-actions"><button type="button" disabled={Boolean(message.deleted_at)} onClick={() => { setReplyTo(message); setMessageText(''); }}>↶ Reply</button><button type="button" disabled={Boolean(message.deleted_at)} onClick={() => { void navigator.clipboard?.writeText(message.body).then(() => setNotice('Message copied.')).catch(() => setNotice('Copy was blocked by your browser.')); }}>Copy</button><button type="button" disabled={Boolean(message.deleted_at) || Boolean(message.audio_path)} onClick={() => void translateMessage(message)}>Translate</button><button type="button" onClick={() => void deleteMessage(message, false)}>Delete for me</button>{mine && !message.deleted_at && <button type="button" onClick={() => void deleteMessage(message, true)}>Delete for everyone</button>}</div>{!message.deleted_at && !message.audio_path && <div className="translation-menu-controls"><p>Translate this message</p><label>I'm speaking<select aria-label="Choose spoken language" value={speechSource} onChange={(event) => setSpeechSource(event.target.value)}><option value="en-US">English</option><option value="zh-CN">Chinese (Simplified)</option><option value="zh-TW">Chinese (Traditional)</option><option value="af-ZA">Afrikaans</option><option value="zu-ZA">isiZulu</option><option value="xh-ZA">isiXhosa</option><option value="fr-FR">French</option><option value="es-ES">Spanish</option><option value="pt-PT">Portuguese</option><option value="de-DE">German</option><option value="ja-JP">Japanese</option><option value="ko-KR">Korean</option><option value="hi-IN">Hindi</option><option value="ar-SA">Arabic</option><option value="sw-KE">Swahili</option><option value="ru-RU">Russian</option><option value="it-IT">Italian</option><option value="nl-NL">Dutch</option><option value="tr-TR">Turkish</option><option value="th-TH">Thai</option></select></label><label>Translate into<select aria-label="Choose translation target language" value={translationTarget} onChange={(event) => { setTranslationTarget(event.target.value); if (translationPanel?.messageId === message.id) void translateMessage(message, event.target.value); }}><option value="en">English</option><option value="af">Afrikaans</option><option value="zu">isiZulu</option><option value="xh">isiXhosa</option><option value="fr">French</option><option value="es">Spanish</option><option value="pt">Portuguese</option><option value="de">German</option><option value="zh-CN">Chinese (Simplified)</option><option value="zh-TW">Chinese (Traditional)</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="hi">Hindi</option><option value="ar">Arabic</option><option value="sw">Swahili</option><option value="ru">Russian</option><option value="it">Italian</option><option value="nl">Dutch</option><option value="tr">Turkish</option><option value="th">Thai</option><option value="bn">Bengali</option><option value="fil">Filipino</option><option value="el">Greek</option><option value="he">Hebrew</option><option value="id">Indonesian</option><option value="ms">Malay</option><option value="pl">Polish</option><option value="uk">Ukrainian</option><option value="vi">Vietnamese</option><option value="fa">Persian</option><option value="ur">Urdu</option><option value="ta">Tamil</option><option value="te">Telugu</option><option value="yo">Yoruba</option><option value="ha">Hausa</option><option value="am">Amharic</option><option value="ro">Romanian</option><option value="sv">Swedish</option><option value="da">Danish</option><option value="no">Norwegian</option><option value="fi">Finnish</option><option value="cs">Czech</option><option value="hu">Hungarian</option><option value="sr">Serbian</option><option value="hr">Croatian</option><option value="bg">Bulgarian</option><option value="sk">Slovak</option><option value="ca">Catalan</option></select></label><button type="button" className="translation-action-button" onClick={() => void translateMessage(message)}>Translate message</button><button type="button" className="translation-action-button speech-translate-button" onClick={() => startSpeechTranslation(message)}>{speechListening ? '■ Stop listening' : '🎤 Speak & translate'}</button>{speechTranscript && translationPanel?.messageId === message.id && <p className="speech-transcript"><strong>You said:</strong> {speechTranscript}</p>}</div>}</div></details></div>; })}</div>
+              <div className="chat-messages">{messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).map((message) => { const mine = message.sender_id === session.user.id; const receipt = messageReceipts[message.id]; return <div key={message.id} className={mine ? 'message-bubble mine' : 'message-bubble'}>{message.reply_to && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.deleted_at ? <p className="deleted-message">{message.body || 'This message was deleted'}</p> : message.audio_path && supabase ? <audio controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{mine && !message.deleted_at && <span className={receipt?.read_at ? 'message-status read' : receipt?.delivered_at ? 'message-status delivered' : 'message-status sent'} title={receipt?.read_at ? 'Read' : receipt?.delivered_at ? 'Delivered' : 'Sent'} aria-label={receipt?.read_at ? 'Read' : receipt?.delivered_at ? 'Delivered' : 'Sent'}>{receipt?.read_at ? '●' : receipt?.delivered_at ? '●' : '·'}</span>} {!message.deleted_at && ' · disappears in 24h'}</time>{translationPanel?.messageId === message.id && <aside className="translation-panel message-translation-panel" aria-live="polite"><div className="translation-panel-title"><strong>Translation</strong>{translationPanel.sourceLanguage && <small>Detected: {translationPanel.sourceLanguage.toUpperCase()}</small>}<button type="button" onClick={() => setTranslationPanel(null)} aria-label="Close translation">×</button></div><p className="translation-original"><small>Original</small>{translationPanel.original}</p><p className="translation-result"><small>Translated</small>{translationPanel.loading ? 'Translating…' : translationPanel.error || translationPanel.translated}</p></aside>}<details className="message-menu message-menu-below"><summary aria-label="Message options" title="Message options">⋮</summary><div className="message-menu-content"><div className="message-actions"><button type="button" disabled={Boolean(message.deleted_at)} onClick={() => { setReplyTo(message); setMessageText(''); }}>↶ Reply</button><button type="button" disabled={Boolean(message.deleted_at)} onClick={() => { void navigator.clipboard?.writeText(message.body).then(() => setNotice('Message copied.')).catch(() => setNotice('Copy was blocked by your browser.')); }}>Copy</button><button type="button" disabled={Boolean(message.deleted_at) || Boolean(message.audio_path)} onClick={() => void translateMessage(message)}>Translate</button><button type="button" onClick={() => void deleteMessage(message, false)}>Delete for me</button>{mine && !message.deleted_at && <button type="button" onClick={() => void deleteMessage(message, true)}>Delete for everyone</button>}</div>{!message.deleted_at && !message.audio_path && <div className="translation-menu-controls"><p>Translate this message</p><label>I'm speaking<select aria-label="Choose spoken language" value={speechSource} onChange={(event) => setSpeechSource(event.target.value)}>{translationLanguages.map((language) => <option key={language.code} value={language.speech}>{language.name}</option>)}</select></label><label>Translate into<select aria-label="Choose translation target language" value={translationTarget} onChange={(event) => { setTranslationTarget(event.target.value); if (translationPanel?.messageId === message.id) void translateMessage(message, event.target.value); }}>{translationLanguages.map((language) => <option key={language.code} value={language.code}>{language.name}</option>)}</select></label><button type="button" className="translation-action-button" onClick={() => void translateMessage(message)}>Translate message</button><button type="button" className="translation-action-button speech-translate-button" onClick={() => startSpeechTranslation(message)}>{speechListening ? '■ Stop listening' : '🎤 Speak & translate'}</button>{speechTranscript && translationPanel?.messageId === message.id && <p className="speech-transcript"><strong>You said:</strong> {speechTranscript}</p>}</div>}</div></details></div>; })}</div>
               {replyTo && <div className="reply-composer"><span>↶ Replying to: {replyTo.body.slice(0, 90)}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
               {(voicePreview || recording) && <div className="voice-preview">{recording && <span className="recording-status" role="status">● Recording… tap the microphone to finish</span>}{voicePreview && <audio controls src={voicePreview} />}<button type="button" onClick={() => { if (recording) stopVoiceRecording(); if (voicePreview) URL.revokeObjectURL(voicePreview); setVoicePreview(null); setVoiceBlob(null); setNotice('Voice note discarded.'); }} disabled={recordingBusy}>Discard</button></div>}
               {showEmojiPicker && <div className="emoji-picker" aria-label="Emoji picker">{['😀','😂','🥰','😍','😘','😊','😉','❤️','💕','💖','🔥','👏','👍','🙏','🌹','✨','😢','😅','🤗','💋'].map((emoji) => <button type="button" key={emoji} onClick={() => setMessageText((text) => text + emoji)}>{emoji}</button>)}</div>}
