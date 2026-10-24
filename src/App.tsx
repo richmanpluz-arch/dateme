@@ -1094,10 +1094,16 @@ export default function App() {
     if (!supabase || !session?.user) { setIsAdmin(false); setVoiceAccess(false); return; }
     supabase!.from('admin_users').select('user_id').eq('user_id', session.user.id).maybeSingle()
       .then(({ data }) => setIsAdmin(Boolean(data)));
-    let cancelled = false;
-    supabase!.rpc('dateme_voice_access', { p_user_id: session.user.id }).then(({ data }) => { if (!cancelled) setVoiceAccess(data === true); });
-    return () => { cancelled = true; };
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!supabase || !session?.user || !activeMatchId) { setVoiceAccess(false); return; }
+    supabase.rpc('dateme_can_exchange_voice', { p_match_id: activeMatchId })
+      .then(({ data }) => { if (!cancelled) setVoiceAccess(data === true); })
+      .catch(() => { if (!cancelled) setVoiceAccess(false); });
+    return () => { cancelled = true; };
+  }, [session?.user?.id, activeMatchId]);
   
   useEffect(() => {
     const client = supabase;
@@ -2009,7 +2015,7 @@ export default function App() {
               {replyTo && <div className="reply-composer"><span>↶ Replying to: {replyTo.body.slice(0, 90)}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
               {(voicePreview || recording) && <div className="voice-preview">{recording && <span className="recording-status" role="status">● Recording… tap the microphone to finish</span>}{voicePreview && <audio controls src={voicePreview} />}<button type="button" onClick={() => { if (recording) stopVoiceRecording(); if (voicePreview) URL.revokeObjectURL(voicePreview); setVoicePreview(null); setVoiceBlob(null); setNotice('Voice note discarded.'); }} disabled={recordingBusy}>Discard</button></div>}
               {showEmojiPicker && <div className="emoji-picker" aria-label="Emoji picker">{['😀','😂','🥰','😍','😘','😊','😉','❤️','💕','💖','🔥','👏','👍','🙏','🌹','✨','😢','😅','🤗','💋'].map((emoji) => <button type="button" key={emoji} onClick={() => setMessageText((text) => text + emoji)}>{emoji}</button>)}</div>}
-              <form className="chat-compose" onSubmit={(event) => { event.preventDefault(); if (voiceBlob) { void sendVoiceNote(); } else { void sendMessage(event); } }}><button type="button" className="chat-tool-button" aria-label="Choose emoji" title="Emoji" onClick={() => setShowEmojiPicker((show) => !show)}>☺</button><input value={messageText} onChange={(e) => setMessageText(e.target.value)} maxLength={2000} placeholder={replyTo ? 'Write a reply…' : 'Write a kind message…'} aria-label="Message" /><button type="button" className={`chat-tool-button voice-record-button ${recording ? 'is-recording' : ''}`} aria-label={recording ? 'Finish voice recording' : 'Record voice note — tap again to finish'} onClick={recording ? stopVoiceRecording : () => void startVoiceRecording()} disabled={recordingBusy || !voiceAccess || Boolean(voiceBlob)} title={!voiceAccess ? 'Voice notes require admin/test access or an active one-year subscription' : recording ? 'Tap again to finish recording' : voiceBlob ? 'Voice note ready — press Send' : 'Tap once to start recording; tap again to finish'}>{recording ? '■' : '🎙'}</button><button className="button button-primary" type="submit" onClick={(event) => { if (voiceBlob) { event.preventDefault(); void sendVoiceNote(); } }} disabled={recordingBusy || recording || (!voiceBlob && !messageText.trim())}>Send ↗</button></form>
+              <form className="chat-compose" onSubmit={(event) => { event.preventDefault(); if (voiceBlob) { void sendVoiceNote(); } else { void sendMessage(event); } }}><button type="button" className="chat-tool-button" aria-label="Choose emoji" title="Emoji" onClick={() => setShowEmojiPicker((show) => !show)}>☺</button><input value={messageText} onChange={(e) => setMessageText(e.target.value)} maxLength={2000} placeholder={replyTo ? 'Write a reply…' : 'Write a kind message…'} aria-label="Message" /><button type="button" className={`chat-tool-button voice-record-button ${recording ? 'is-recording' : ''}`} aria-label={recording ? 'Finish voice recording' : 'Record voice note — tap again to finish'} onClick={recording ? stopVoiceRecording : () => void startVoiceRecording()} disabled={recordingBusy || Boolean(voiceBlob)} title={recording ? 'Tap again to finish recording' : voiceBlob ? 'Voice note ready — press Send' : voiceAccess ? 'Tap to record; both matched members must have active yearly subscriptions' : 'Tap to check yearly-subscription eligibility and microphone access'}>{recording ? '■' : '🎙'}</button><button className="button button-primary" type="submit" onClick={(event) => { if (voiceBlob) { event.preventDefault(); void sendVoiceNote(); } }} disabled={recordingBusy || recording || (!voiceBlob && !messageText.trim())}>Send ↗</button></form>
             </> : <div className="chat-placeholder"><span>♡</span><h3>A little hello goes a long way.</h3><p>Choose a match to start your conversation.</p></div>}</section>
           </div>}
 
