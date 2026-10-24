@@ -81,6 +81,8 @@ export default function App() {
   const recorderChunksRef = useRef<BlobPart[]>([]);
   const [activeMatchId, setActiveMatchId] = useState('');
   const [focusedChatOnly, setFocusedChatOnly] = useState(false);
+  const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
   const [tab, setTab] = useState<'discover' | 'likes' | 'matches' | 'profile'>('discover');
   const [searchText, setSearchText] = useState('');
   const [blockedIds, setBlockedIds] = useState<string[]>([]);
@@ -263,6 +265,11 @@ export default function App() {
     void loadMemberData();
     return () => { cancelled = true; };
   }, [session]);
+
+  useEffect(() => {
+    if (!session?.user.id) { setHiddenMessageIds([]); return; }
+    try { setHiddenMessageIds(JSON.parse(localStorage.getItem(`dateme-hidden-messages-${session.user.id}`) || '[]') as string[]); } catch { setHiddenMessageIds([]); }
+  }, [session?.user.id]);
 
   useEffect(() => {
     if (!supabase || !session || !activeMatchId) { setMessages([]); return; }
@@ -452,6 +459,54 @@ export default function App() {
     setPhotoFile(null);
     setProfiles((current) => current.filter((profile) => profile.id !== session.user.id));
     setNotice('Your profile has been saved.');
+  }
+
+  function copyChatMessage(message: Message) {
+    void navigator.clipboard?.writeText(message.body).then(() => setNotice('Message copied.')).catch(() => setNotice('Copy was blocked by your browser.'));
+    setOpenMessageMenuId(null);
+  }
+
+  function translateChatMessage(message: Message) {
+    window.open('https://translate.google.com/?sl=auto&tl=en&text=' + encodeURIComponent(message.body) + '&op=translate', '_blank', 'noopener,noreferrer');
+    setOpenMessageMenuId(null);
+  }
+
+  function replyToChatMessage(message: Message) {
+    setReplyTo(message);
+    setMessageText('');
+    setOpenMessageMenuId(null);
+  }
+
+  function deleteChatMessageForMe(message: Message, isDemo = false) {
+    if (isDemo) {
+      setDemoMessages((current) => current.filter((item) => item.id !== message.id));
+    } else {
+      const next = [...new Set([...hiddenMessageIds, message.id])];
+      setHiddenMessageIds(next);
+      if (session?.user.id) localStorage.setItem(`dateme-hidden-messages-${session.user.id}`, JSON.stringify(next));
+    }
+    setOpenMessageMenuId(null);
+  }
+
+  async function deleteChatMessageForEveryone(message: Message, isDemo = false) {
+    if (isDemo) {
+      setDemoMessages((current) => current.filter((item) => item.id !== message.id));
+      setOpenMessageMenuId(null);
+      return;
+    }
+    if (!supabase || !session || message.sender_id !== session.user.id) {
+      setNotice('You can delete a message for everyone only if you sent it.');
+      setOpenMessageMenuId(null);
+      return;
+    }
+    const { data, error } = await supabase.from('messages').delete().eq('id', message.id).eq('sender_id', session.user.id).select('id').maybeSingle();
+    if (error || !data) {
+      setNotice('Could not delete this message for everyone. The database must allow the sender to delete their own messages.');
+    } else {
+      setMessages((current) => current.filter((item) => item.id !== message.id));
+      setNotice('Message deleted for everyone.');
+    }
+    setOpenMessageMenuId(null);
   }
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
@@ -661,7 +716,7 @@ export default function App() {
             <section className="chat-panel">{activeMatch ? <>
               <div className="chat-heading">{focusedChatOnly && <button type="button" className="chat-back-button" onClick={() => setFocusedChatOnly(false)} aria-label="Back to matches" title="Back to matches">‹</button>}<span className="match-avatar">{activePerson?.photo_url ? <img src={activePerson.photo_url} alt="" /> : '♡'}</span><div><strong>{activePerson?.display_name || 'Your match'}</strong><small>{focusedChatOnly ? 'Private conversation' : 'Only you and your match can see this chat'}</small></div></div>
               <div className="chat-tools-note">🔒 Private chat · messages expire after 24 hours</div>
-              <div className="chat-messages">{messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).map((message) => <div key={message.id} className={message.sender_id === session.user.id ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" title="Reply to message" aria-label="Reply to message" onClick={() => { setReplyTo(message); setMessageText(''); }}>↶ Reply</button><button type="button" title="Copy message" aria-label="Copy message" onClick={() => { void navigator.clipboard?.writeText(message.body).then(() => setNotice('Message copied.')).catch(() => setNotice('Copy was blocked by your browser.')); }}>Copy</button><button type="button" title="Translate message" aria-label="Translate message" onClick={() => window.open('https://translate.google.com/?sl=auto&tl=en&text=' + encodeURIComponent(message.body) + '&op=translate', '_blank', 'noopener,noreferrer')}>Translate</button></div>{message.reply_to && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · disappears in 24h</time></div>)}</div>
+              <div className="chat-messages">{messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id)).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id)).map((message) => <div key={message.id} className={message.sender_id === session.user.id ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" className="message-menu-trigger" title="Message options" aria-label="Message options" aria-expanded={openMessageMenuId === message.id} onClick={() => setOpenMessageMenuId((current) => current === message.id ? null : message.id)}>⋯</button>{openMessageMenuId === message.id && <div className="message-options-menu" role="menu"><button type="button" role="menuitem" onClick={() => replyToChatMessage(message)}>↶ Reply</button><button type="button" role="menuitem" onClick={() => translateChatMessage(message)}>文 Translate</button><button type="button" role="menuitem" onClick={() => copyChatMessage(message)}>▢ Copy</button><button type="button" role="menuitem" onClick={() => deleteChatMessageForMe(message)}>Delete for me</button>{message.sender_id === session.user.id && <button type="button" role="menuitem" className="message-delete-action" onClick={() => void deleteChatMessageForEveryone(message)}>Delete for everyone</button>}</div>}</div>{message.reply_to && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · disappears in 24h</time></div>)}</div>
               {replyTo && <div className="reply-composer"><span>↶ Replying to: {replyTo.body.slice(0, 90)}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
               {voicePreview && <div className="voice-preview"><audio controls src={voicePreview} /><button type="button" onClick={() => { URL.revokeObjectURL(voicePreview); setVoicePreview(null); setVoiceBlob(null); }}>Discard</button><button type="button" onClick={() => void sendVoiceNote()} disabled={recordingBusy}>Send voice note</button></div>}
               {showEmojiPicker && <div className="emoji-picker" aria-label="Emoji picker">{['😀','😂','🥰','😍','😘','😊','😉','❤️','💕','💖','🔥','👏','👍','🙏','🌹','✨','😢','😅','🤗','💋'].map((emoji) => <button type="button" key={emoji} onClick={() => setMessageText((text) => text + emoji)}>{emoji}</button>)}</div>}
@@ -698,7 +753,7 @@ export default function App() {
             <button type="button" className="focused-chat-close" onClick={() => { setFocusedChatOnly(false); setDemoChatPerson(null); setDemoMessages([]); setActiveMatchId(''); setTab('discover'); setNotice(''); }} aria-label="Close conversation" title="Close">×</button>
           </header>
           <div className="focused-chat-messages">
-            {(demoChatPerson ? demoMessages : messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now())).map((message) => <div key={message.id} className={message.sender_id === (demoChatPerson ? 'demo-you' : session?.user.id) ? 'message-bubble mine' : 'message-bubble'}>{message.reply_to && !demoChatPerson && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div>)}
+            {(demoChatPerson ? demoMessages : messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id))).map((message) => <div key={message.id} className={message.sender_id === (demoChatPerson ? 'demo-you' : session?.user.id) ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" className="message-menu-trigger" title="Message options" aria-label="Message options" aria-expanded={openMessageMenuId === message.id} onClick={() => setOpenMessageMenuId((current) => current === message.id ? null : message.id)}>⋯</button>{openMessageMenuId === message.id && <div className="message-options-menu" role="menu"><button type="button" role="menuitem" onClick={() => replyToChatMessage(message)}>↶ Reply</button><button type="button" role="menuitem" onClick={() => translateChatMessage(message)}>文 Translate</button><button type="button" role="menuitem" onClick={() => copyChatMessage(message)}>▢ Copy</button><button type="button" role="menuitem" onClick={() => deleteChatMessageForMe(message, Boolean(demoChatPerson))}>Delete for me</button>{(demoChatPerson || message.sender_id === session?.user.id) && <button type="button" role="menuitem" className="message-delete-action" onClick={() => void deleteChatMessageForEveryone(message, Boolean(demoChatPerson))}>Delete for everyone</button>}</div>}</div>{message.reply_to && !demoChatPerson && <p className="reply-reference">↶ Replying to an earlier message</p>}{message.audio_path && supabase ? <audio controls preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div>)}
             {(demoChatPerson ? demoMessages.length === 0 : messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).length === 0) && <p className="chat-empty">Say hello to start your conversation.</p>}
           </div>
           {replyTo && !demoChatPerson && <div className="reply-composer"><span>↶ Replying to: {replyTo.body.slice(0, 70)}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
