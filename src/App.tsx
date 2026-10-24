@@ -40,7 +40,7 @@ function DateMeLogo() {
     <path d="M26 111 C82 73 124 83 170 105 C216 83 258 73 314 111 L314 139 C256 109 217 116 170 136 C123 116 84 109 26 139Z" fill="url(#dm-navy)" stroke="#d9b96d" strokeWidth="2.5"/>
     <path d="M13 151 C74 118 122 129 170 150 C218 129 266 118 327 151 L327 180 C267 151 218 162 170 182 C122 162 73 151 13 180Z" fill="url(#dm-green)" stroke="#d9b96d" strokeWidth="2.5"/>
     <path d="M26 198 C83 174 123 182 170 201 C217 182 257 174 314 198 L314 226 C256 205 217 216 170 236 C123 216 84 205 26 226Z" fill="url(#dm-navy)" stroke="#d9b96d" strokeWidth="2.5"/>
-    <g fill="#fff4dd" fontFamily="Georgia,serif" fontStyle="italic" fontWeight="bold" fontSize="17" stroke="#fff4dd" strokeWidth=".25"><text x="48" y="119" transform="rotate(-7 48 119)">Date Me</text><text x="218" y="119" transform="rotate(7 218 119)">Date Me</text><text x="38" y="169" transform="rotate(-4 38 169)">Date Me</text><text x="222" y="169" transform="rotate(4 222 169)">Date Me</text><text x="51" y="218" transform="rotate(-5 51 218)">Date Me</text><text x="213" y="218" transform="rotate(5 213 218)">Date Me</text></g>
+    <g fill="#fff4dd" fontFamily="Georgia,serif" fontStyle="italic" fontWeight="bold" fontSize="18" stroke="#fff4dd" strokeWidth=".25"><text x="170" y="171" textAnchor="middle">Date Me</text></g>
     <g fill="#ff3150"><path d="M170 110 C160 98 146 108 154 118 L170 132 L186 118 C194 108 180 98 170 110Z"/><path d="M170 160 C160 148 146 158 154 168 L170 182 L186 168 C194 158 180 148 170 160Z"/><path d="M170 209 C160 197 146 207 154 217 L170 231 L186 217 C194 207 180 197 170 209Z"/></g>
   </svg>;
 }
@@ -726,7 +726,7 @@ export default function App() {
       }
       const filePath = `${session.user.id}/${crypto.randomUUID()}.${extension === 'jpg' ? 'jpg' : extension}`;
       const { error: uploadError } = await supabase!.storage.from('dateme-avatars').upload(filePath, photoFile, { contentType: photoFile.type, upsert: false });
-      if (uploadError) { setBusy(false); setNotice('Photo upload failed. Please try another image.'); return; }
+      if (uploadError) { setBusy(false); setNotice(`Photo upload failed: ${uploadError.message}`); return; }
       photoUrl = supabase!.storage.from('dateme-avatars').getPublicUrl(filePath).data.publicUrl;
     }
     const payload = {
@@ -928,7 +928,7 @@ export default function App() {
             <div className="hero-art" aria-hidden="true"><div className="art-orbit orbit-one"></div><div className="art-orbit orbit-two"></div><div className="art-heart">♥</div><span className="art-star star-one">✦</span><span className="art-star star-two">✧</span><span className="art-note note-one">your person is out there</span><span className="art-note note-two">start with a hello ♡</span></div>
           </div>
           <div className="auth-card" id="join">
-            <div className="portal-page-actions auth-page-actions"><button type="button" onClick={() => { setMode(mode === 'forgot' ? 'signin' : mode === 'signin' ? 'signup' : 'signin'); setNotice(''); }}>← Back</button><button type="button" onClick={() => { navigateTo('discover'); setNotice(''); window.scrollTo({top:0,behavior:'smooth'}); }}>× Close</button></div><div className="registration-logo"><DateMeLogo /></div>
+            <div className="registration-logo"><DateMeLogo /></div>
             <div className="card-heading"><h2>{mode === 'signup' ? 'Create your DateMe account' : mode === 'forgot' ? 'Reset your password' : 'Welcome back'}</h2><p>{mode === 'signup' ? 'Your story starts with a few details.' : mode === 'forgot' ? 'We’ll email you a secure reset link.' : 'Your next chapter is waiting.'}</p></div>
             <div className="auth-switch" role="tablist" aria-label="Account type"><button className={mode === 'signup' ? 'active' : ''} onClick={() => { setMode('signup'); setNotice(''); }} role="tab" aria-selected={mode === 'signup'}>Create account</button><button className={mode === 'signin' ? 'active' : ''} onClick={() => { setMode('signin'); setNotice(''); }} role="tab" aria-selected={mode === 'signin'}>Log in</button></div>
             <form onSubmit={handleAuth} className="auth-form">
@@ -946,7 +946,7 @@ export default function App() {
         </section>}
 
         {page === 'discover' && <section className="discover-section" id="discover">
-          <div className="portal-page-actions discover-page-actions"><button type="button" onClick={() => { setTab('discover'); setActiveMatchId(''); setReplyTo(null); }}>← Back</button><button type="button" onClick={() => { setActiveMatchId(''); setReplyTo(null); setVoicePreview(null); setVoiceBlob(null); setTab('discover'); }}>× Close</button></div><div className="section-heading"><div><span className="eyebrow">GOOD PEOPLE, REAL POSSIBILITIES</span><h2>{session ? tab === 'matches' ? 'Your connections' : tab === 'profile' ? 'Your story, your way' : 'People you might like' : 'A little closer to your person'}</h2><p>Start with a smile. See where a conversation takes you.</p></div><span className="section-flower" aria-hidden="true">✳</span></div>
+          <div className="section-heading"><div><span className="eyebrow">GOOD PEOPLE, REAL POSSIBILITIES</span><h2>{session ? tab === 'matches' ? 'Your connections' : tab === 'profile' ? 'Your story, your way' : 'People you might like' : 'A little closer to your person'}</h2><p>Start with a smile. See where a conversation takes you.</p></div><span className="section-flower" aria-hidden="true">✳</span></div>
           {session && <div className="discover-search"><span>⌕</span><input aria-label="Search members" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search by name, city or interests…" /><button type="button" onClick={() => setSearchText('')}>Clear</button></div>}
           {session && tab !== 'profile' && <div className="discover-filter-row" aria-label="Profile filters">
             <label>City<input aria-label="Filter by city" value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} placeholder="Any city" maxLength={80} /></label>
