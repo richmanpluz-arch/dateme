@@ -313,3 +313,23 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
   .chat-compose { padding:9px 8px; gap:5px; }
   .chat-compose .button { padding:10px 11px; font-size:.76rem; }
 }
+
+
+/* Consistent page-level navigation: these controls stay in the app header,
+   so every section behaves like a real page rather than a floating overlay. */
+.global-page-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.global-page-actions button { min-height:38px; padding:8px 12px; border:1px solid var(--line); border-radius:10px; background:rgba(8,27,46,.92); color:var(--cream); font:inherit; font-size:.76rem; font-weight:700; cursor:pointer; transition:background .18s,border-color .18s,transform .18s; }
+.global-page-actions button:hover { background:var(--navy-3); border-color:var(--gold); transform:translateY(-1px); }
+.portal-page { min-height:calc(100vh - 150px); width:100%; margin:0; border:0; border-radius:0; box-shadow:none; background:linear-gradient(160deg,rgba(11,32,53,.92),rgba(6,20,38,.98) 58%,rgba(0,107,79,.12)); }
+.portal-page > .portal-page-actions { display:none; }
+.portal-page .plan-detail .portal-page-actions { display:none; }
+@media (max-width:900px) {
+  .global-page-actions { gap:5px; }
+  .global-page-actions button { padding:7px 9px; font-size:.72rem; }
+}
+@media (max-width:760px) {
+  .global-page-actions { width:100%; justify-content:flex-end; order:4; }
+  .topbar { flex-wrap:wrap; }
+  .global-page-actions button { min-height:35px; }
+  .portal-page { min-height:calc(100vh - 125px); padding-top:28px; padding-bottom:40px; }
+}
