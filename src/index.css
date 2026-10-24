@@ -411,3 +411,11 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
 .message-menu-below[open] .message-actions { position:static; right:auto; top:auto; min-width:0; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
 .message-menu-below:not([open]) .message-menu-content { display:none; }
 .message-menu-below[open] .translation-menu-controls { position:static; }
+
+
+/* Voice-note recording stays active until the user explicitly stops it. */
+.chat-tool-button.voice-record-button { touch-action:manipulation; flex:0 0 auto; min-width:42px; min-height:42px; }
+.chat-tool-button.voice-record-button.is-recording { color:#fff; background:#a92835; border-color:#ff727b; box-shadow:0 0 0 3px rgba(220,55,70,.16); }
+.voice-preview { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.voice-preview audio { flex:1 1 180px; min-width:0; max-width:100%; }
+.recording-status { color:#ff858d; font-size:.8rem; font-weight:700; }
