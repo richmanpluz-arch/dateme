@@ -1458,6 +1458,21 @@ export default function App() {
     [profiles, liked, tab, blockedIds, searchText, minAgeFilter, maxAgeFilter, cityFilter, ageFilterError],
   );
   const activeMatch = matches.find((match) => match.id === activeMatchId) || null;
+  const profileCompletion = useMemo(() => {
+    if (!myProfile) return { score: 0, completed: [] as string[], missing: [] as string[] };
+    const checks = [
+      { label: 'Profile photo', done: Boolean(myProfile.photo_url || memberMedia.some((item) => item.media_type === 'photo')) },
+      { label: 'About you', done: Boolean(myProfile.bio?.trim()) },
+      { label: 'What you are looking for', done: Boolean(myProfile.looking_for) },
+      { label: 'Interests', done: Boolean(myProfile.interests?.length) },
+      { label: 'Languages', done: Boolean(myProfile.languages?.length) },
+      { label: 'Conversation prompt', done: Boolean(myProfile.prompt_question?.trim() && myProfile.prompt_answer?.trim()) },
+      { label: 'City', done: Boolean(myProfile.city?.trim()) },
+    ];
+    const completed = checks.filter((item) => item.done).map((item) => item.label);
+    return { score: Math.round((completed.length / checks.length) * 100), completed, missing: checks.filter((item) => !item.done).map((item) => item.label) };
+  }, [myProfile, memberMedia]);
+
 
   useEffect(() => {
     if (!supabase || !session || !messages.length) { setVoiceUrls({}); return; }
@@ -1986,6 +2001,12 @@ export default function App() {
           {session && tab === 'profile' && myProfile && <form className="profile-editor" onSubmit={saveProfile}>
             <div className="editor-photo-column"><div className="editor-photo">{myProfile.photo_url ? <img src={myProfile.photo_url} alt="Your profile" /> : <span>♡</span>}</div><label className="photo-upload-label">Upload photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const file = e.target.files?.[0] || null; setPhotoFile(file); setNotice(file ? `Selected ${file.name}. Save your profile to upload it.` : ''); }} /><small>JPG, PNG or WebP · max 5 MB</small></label></div>
             <div className="editor-fields">
+              <section className="profile-completion-card" aria-label="Profile completion">
+                <div className="profile-completion-heading"><div><span className="eyebrow">MAKE A GREAT FIRST IMPRESSION</span><h3>Profile strength</h3></div><strong>{profileCompletion.score}%</strong></div>
+                <div className="profile-completion-track" role="progressbar" aria-label="Profile completion" aria-valuemin={0} aria-valuemax={100} aria-valuenow={profileCompletion.score}><span style={{ width: profileCompletion.score + '%' }} /></div>
+                <p>{profileCompletion.score === 100 ? 'Lovely — your profile gives people plenty to start a conversation with.' : 'Profiles with a few personal details give matches more reasons to say hello.'}</p>
+                <div className="profile-completion-checks">{profileCompletion.completed.map((item) => <span className="completion-done" key={item}>✓ {item}</span>)}{profileCompletion.missing.map((item) => <span className="completion-missing" key={item}>＋ {item}</span>)}</div>
+              </section>
               <label>Display name<input required minLength={2} maxLength={60} value={myProfile.display_name} onChange={(e) => setMyProfile({ ...myProfile, display_name: e.target.value })} placeholder="Your name" /></label>
               <label>Age (18+)<input type="number" min={18} max={120} value={myProfile.age ?? ''} onChange={(e) => setMyProfile({ ...myProfile, age: e.target.value ? Number(e.target.value) : null })} placeholder="Your age" required /></label>
               <label>City<input maxLength={100} value={myProfile.city || ''} onChange={(e) => setMyProfile({ ...myProfile, city: e.target.value })} placeholder="e.g. Johannesburg" /></label>
@@ -1995,6 +2016,7 @@ export default function App() {
               <label>Interests <input value={(myProfile.interests || []).join(', ')} onChange={(e) => setMyProfile({ ...myProfile, interests: e.target.value.split(',').map((v) => v.trim()).filter(Boolean).slice(0, 12) })} placeholder="Music, hiking, cooking (comma separated)" /></label>
               <label>Languages <input value={(myProfile.languages || []).join(', ')} onChange={(e) => setMyProfile({ ...myProfile, languages: e.target.value.split(',').map((v) => v.trim()).filter(Boolean).slice(0, 8) })} placeholder="English, isiZulu, Afrikaans…" /></label>
               <label>Profile prompt question<input maxLength={160} value={myProfile.prompt_question || ''} onChange={(e) => setMyProfile({ ...myProfile, prompt_question: e.target.value })} placeholder="A perfect Sunday looks like…" /></label>
+              <div className="prompt-idea-panel"><strong>Need a prompt idea?</strong><p>Choose one to add it to your profile, then write your own answer.</p><div className="prompt-idea-buttons">{['A small thing that makes me happy…','My ideal first date would be…','I could talk for hours about…','The green flag I appreciate most…','A weekend well spent looks like…','One thing I want to try this year…'].map((prompt) => <button type="button" key={prompt} onClick={() => setMyProfile({ ...myProfile, prompt_question: prompt })}>{prompt}</button>)}</div></div>
               <label>Prompt answer<textarea maxLength={300} rows={2} value={myProfile.prompt_answer || ''} onChange={(e) => setMyProfile({ ...myProfile, prompt_answer: e.target.value })} placeholder="Give someone an easy conversation starter" /></label>
               <button className="button button-primary" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save my profile'}</button>
             </div>
