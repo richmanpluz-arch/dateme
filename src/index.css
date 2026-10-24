@@ -448,3 +448,9 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
 .chat-icebreakers button span { flex:0 0 auto; color:#a7e5c5; font-size:.68rem; font-weight:700; }
 .chat-icebreakers button:hover { border-color:#5caa8b; background:#10372f; }
 @media(max-width:620px) { .chat-empty-state { padding:14px 8px; } .chat-icebreakers button { align-items:flex-start; flex-direction:column; gap:5px; } }
+
+
+/* Shared-interest highlights on discovery cards */
+.shared-interest-note { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px; margin:9px 0; padding:9px 10px; border:1px solid #2c6c5b; border-radius:9px; background:#0c302d; color:#ccefe0; font-size:.72rem; line-height:1.45; }
+.shared-interest-note > span { color:#a4e9c6; margin-right:2px; }
+.shared-interest-note strong { color:#a4e9c6; }
