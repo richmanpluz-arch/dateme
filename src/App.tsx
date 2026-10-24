@@ -594,6 +594,7 @@ export default function App() {
   }, [messages, session?.user.id]);
   const activePerson = activeMatch ? profiles.find((profile) => profile.id === (activeMatch.user_one === session?.user.id ? activeMatch.user_two : activeMatch.user_one)) : null;
   const presenceLabel = otherLastSeenAt ? (Date.now() - new Date(otherLastSeenAt).getTime() < 90000 ? '● Online now' : `Last active ${new Date(otherLastSeenAt).toLocaleString()}`) : '● Status unavailable';
+  useEffect(() => { if (!supabase || !session?.user) return; void supabase.from('member_presence').upsert({ user_id: session.user.id, last_seen_at: new Date().toISOString() }, { onConflict: 'user_id' }); }, [session?.user?.id]);
 
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setNotice('');
