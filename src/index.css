@@ -344,3 +344,33 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
 .message-menu .message-actions button { width:100%; text-align:left; padding:8px 10px; font-size:.72rem; }
 .presence-online { color:#74e2a9 !important; }
 .presence-offline { color:#b3ccc6 !important; }
+
+/* Subscription benefit catalog and profile media gallery */
+.subscription-feature-catalog { margin:18px 0 22px; padding:16px; border:1px solid var(--line); border-radius:14px; background:#071b2b; }
+.catalog-intro { color:var(--muted); font-size:.78rem; line-height:1.6; }
+.catalog-feature { display:flex; align-items:center; gap:10px; padding:10px 2px; border-bottom:1px solid rgba(216,182,106,.12); font-size:.83rem; }
+.catalog-feature:last-child { border-bottom:0; }
+.catalog-status { display:inline-grid; place-items:center; flex:0 0 24px; width:24px; height:24px; border-radius:50%; font-weight:900; }
+.catalog-status.active { color:#fff; background:#13844f; }
+.catalog-status.locked { color:#fff; background:#b71932; font-size:.82rem; }
+.profile-gallery { grid-column:1/-1; margin-top:18px; padding:18px; border:1px solid var(--line); border-radius:16px; background:var(--surface); }
+.gallery-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.gallery-heading h3 { margin:0 0 6px; }
+.gallery-heading p,.gallery-empty { color:var(--muted); font-size:.8rem; line-height:1.6; }
+.gallery-count { color:var(--gold); font-size:.75rem; white-space:nowrap; }
+.gallery-limits { display:flex; flex-wrap:wrap; gap:9px; margin:12px 0; }
+.gallery-limits span { padding:7px 10px; border:1px solid var(--line); border-radius:9px; color:var(--cream); font-size:.75rem; }
+.gallery-upload { display:grid; gap:6px; padding:13px; border:1px dashed #3b826a; border-radius:10px; color:#a5e9c5; font-size:.8rem; font-weight:700; cursor:pointer; }
+.gallery-upload input { width:100%; color:var(--muted); }
+.gallery-upload small { color:var(--muted); font-weight:400; }
+.profile-gallery-grid,.member-mini-gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(105px,1fr)); gap:9px; margin-top:14px; }
+.gallery-item { position:relative; min-width:0; aspect-ratio:3/4; overflow:hidden; border:1px solid var(--line); border-radius:10px; background:#061426; }
+.gallery-item img,.gallery-item video,.member-mini-gallery img,.member-mini-gallery video { width:100%; height:100%; object-fit:cover; }
+.gallery-item span { position:absolute; left:5px; bottom:5px; padding:3px 5px; border-radius:5px; background:#061426d9; color:white; font-size:.58rem; }
+.gallery-item button { position:absolute; right:5px; top:5px; width:27px; height:27px; border:0; border-radius:50%; background:#b71932; color:white; font-size:1rem; }
+.member-mini-gallery { grid-template-columns:repeat(4,minmax(0,1fr)); margin:0 0 12px; }
+.member-mini-gallery img,.member-mini-gallery video { aspect-ratio:1; border-radius:7px; background:#061426; }
+.chat-translation-launch { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 12px 10px; padding:10px 12px; border:1px solid #316c67; border-radius:10px; background:#0b2c35; color:#d9eee4; font-size:.75rem; }
+.chat-translation-launch button { border:1px solid #347d69; border-radius:8px; padding:7px 9px; background:#126548; color:white; font-size:.72rem; font-weight:700; }
+.chat-translation-launch button:disabled { opacity:.45; }
+@media(max-width:620px) { .gallery-heading { flex-direction:column; } .chat-translation-launch { align-items:flex-start; flex-direction:column; } .profile-gallery-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
