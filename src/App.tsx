@@ -98,6 +98,10 @@ export default function App() {
   const [affiliateReferrals, setAffiliateReferrals] = useState<Array<{ id: string; referred_user_id: string; status: string; qualifying_minutes_today: number; promo_ends_at: string | null; created_at: string }>>([]);
   const [affiliateActivitySeconds, setAffiliateActivitySeconds] = useState(0);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{ plan_code: string; status: string; ends_at: string | null; payment_verified: boolean; promo_chat_until: string | null } | null>(null);
+  const [incomingLikes, setIncomingLikes] = useState<Profile[]>([]);
+  const [incomingLikeCount, setIncomingLikeCount] = useState(0);
+  const [dailyChatsUsed, setDailyChatsUsed] = useState(0);
+  const [dailyChatLimitReached, setDailyChatLimitReached] = useState(false);
   const [adminSubscriptions, setAdminSubscriptions] = useState<Array<{ user_id: string; plan_code: string; status: string; created_at: string; payment_verified: boolean }>>([]);
   const referralCodeFromUrl = new URLSearchParams(window.location.search).get('ref');
 
@@ -295,11 +299,53 @@ export default function App() {
     return () => { cancelled = true; void supabase!.removeChannel(channel); };
   }, [session, activeMatchId]);
 
-  const visibleProfiles = useMemo(
-    () => (tab === 'likes' ? profiles.filter((profile) => liked.includes(profile.id)) : profiles).filter((profile) => !blockedIds.includes(profile.id) && (profile.display_name + ' ' + (profile.city || '') + ' ' + (profile.bio || '') + ' ' + (profile.interests || []).join(' ')).toLowerCase().includes(searchText.toLowerCase())),
-    [profiles, liked, tab, blockedIds, searchText],
-  );
   const activeMatch = matches.find((match) => match.id === activeMatchId) || null;
+  const hasActivePaidSubscription = Boolean(subscriptionInfo && subscriptionInfo.plan_code !== 'free' && subscriptionInfo.status === 'active' && subscriptionInfo.payment_verified && subscriptionInfo.ends_at && new Date(subscriptionInfo.ends_at).getTime() > Date.now());
+
+  useEffect(() => {
+    if (!supabase || !session?.user.id) {
+      setIncomingLikes([]);
+      setIncomingLikeCount(0);
+      setDailyChatsUsed(0);
+      setDailyChatLimitReached(false);
+      return;
+    }
+    let cancelled = false;
+    async function loadSubscriptionGatedData() {
+      const [countResult, likesResult, usageResult] = await Promise.all([
+        supabase!.rpc('get_incoming_like_count'),
+        supabase!.rpc('get_incoming_likes'),
+        supabase!.rpc('get_my_daily_chat_usage'),
+      ]);
+      if (cancelled) return;
+      if (!countResult.error) setIncomingLikeCount(Number(countResult.data || 0));
+      if (!likesResult.error) setIncomingLikes((likesResult.data || []) as Profile[]);
+      else setIncomingLikes([]);
+      if (!usageResult.error) setDailyChatsUsed(Number(usageResult.data || 0));
+      if (hasActivePaidSubscription) setDailyChatLimitReached(false);
+    }
+    void loadSubscriptionGatedData();
+    return () => { cancelled = true; };
+  }, [session?.user.id, hasActivePaidSubscription]);
+
+  useEffect(() => {
+    if (!session?.user.id) return;
+    let lastSouthAfricanDay = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Johannesburg' });
+    const timer = window.setInterval(() => {
+      const currentSouthAfricanDay = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Johannesburg' });
+      if (currentSouthAfricanDay !== lastSouthAfricanDay) {
+        lastSouthAfricanDay = currentSouthAfricanDay;
+        setDailyChatLimitReached(false);
+        void loadDailyChatUsage();
+      }
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, [session?.user.id]);
+
+  const visibleProfiles = useMemo(
+    () => (tab === 'likes' ? (hasActivePaidSubscription ? incomingLikes : []) : profiles).filter((profile) => !blockedIds.includes(profile.id) && (profile.display_name + ' ' + (profile.city || '') + ' ' + (profile.bio || '') + ' ' + (profile.interests || []).join(' ')).toLowerCase().includes(searchText.toLowerCase())),
+    [profiles, incomingLikes, hasActivePaidSubscription, tab, blockedIds, searchText],
+  );
 
   useEffect(() => {
     if (!supabase || !session || !messages.length) { setVoiceUrls({}); return; }
@@ -566,6 +612,12 @@ export default function App() {
     setOpenMessageMenuId(null);
   }
 
+  async function loadDailyChatUsage() {
+    if (!supabase || !session) { setDailyChatsUsed(0); return; }
+    const { data, error } = await supabase!.rpc('get_my_daily_chat_usage');
+    if (!error) setDailyChatsUsed(Number(data || 0));
+  }
+
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const body = messageText.trim();
@@ -597,7 +649,12 @@ export default function App() {
     const { data, error } = await supabase!.from('messages').insert({ match_id: activeMatchId, sender_id: session.user.id, body, reply_to: replyTo?.id || null, expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }).select('id, match_id, sender_id, body, created_at, expires_at, reply_to, audio_path').single();
     if (error) {
       if (error.message?.includes('ACCOUNT_SUSPENDED_24H')) setNotice('Your account has been suspended for 24 hours. Contact the DateMe administrator.');
-      else setNotice('Message could not be sent. Messaging is only available to matched members.');
+      else if (error.message?.includes('FREE_DAILY_CHAT_LIMIT')) {
+        setDailyChatLimitReached(true);
+        setNotice('You have used your four new chats for today. Subscribe to start more conversations. Your limit resets at midnight South African time.');
+      } else if (error.message?.includes('VOICE_SUBSCRIPTION_REQUIRED')) setNotice('Voice notes require both matched members to have the same active, verified subscription tier.');
+      else if (error.message?.includes('Messaging is unavailable')) setNotice('Messaging is unavailable because one of these accounts has blocked the other.');
+      else setNotice('Message could not be sent. Check that this is an available match and try again.');
       return;
     }
     if (data) {
@@ -605,6 +662,8 @@ export default function App() {
       if (data.body === '*********') setNotice('********* Your message contained blocked contact details or suspicious number/link patterns. It was replaced with asterisks. Repeated attempts may suspend your account for 24 hours. Contact the administrator if suspended.');
     }
     setMessageText(''); setReplyTo(null); setShowEmojiPicker(false);
+    setDailyChatLimitReached(false);
+    void loadDailyChatUsage();
   }
 
   async function hasPaidMediaAccess(): Promise<boolean> {
@@ -672,6 +731,7 @@ export default function App() {
 
   function openChat(match: Match) {
     setActiveMatchId(match.id);
+    setDailyChatLimitReached(false);
     setFocusedChatOnly(true);
     const otherId = match.user_one === session?.user.id ? match.user_two : match.user_one;
     setNotice('');
@@ -730,11 +790,11 @@ export default function App() {
         </section>}
 
         {page === 'discover' && <section className="discover-section" id="discover">
-          <div className="section-heading"><div><span className="eyebrow">GOOD PEOPLE, REAL POSSIBILITIES</span><h2>{session ? tab === 'matches' ? 'Your connections' : tab === 'profile' ? 'Your story, your way' : 'People you might like' : 'A little closer to your person'}</h2><p>Start with a smile. See where a conversation takes you.</p></div><span className="section-flower" aria-hidden="true">✳</span></div>
+          <div className="section-heading"><div><span className="eyebrow">GOOD PEOPLE, REAL POSSIBILITIES</span><h2>{session ? tab === 'matches' ? 'Your connections' : tab === 'profile' ? 'Your story, your way' : tab === 'likes' ? 'People who liked you' : 'People you might like' : 'A little closer to your person'}</h2><p>{tab === 'likes' ? 'Your likes are private until your subscription unlocks them.' : 'Start with a smile. See where a conversation takes you.'}</p></div><span className="section-flower" aria-hidden="true">✳</span></div>
           {session && <div className="discover-search"><span>⌕</span><input aria-label="Search members" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search by name, city or interests…" /><button type="button" onClick={() => setSearchText('')}>Clear</button></div>}
           {session && <div className="member-bar"><span>Signed in as <strong>{session.user.email}</strong></span><div className="member-tabs">
             <button className={tab === 'discover' ? 'selected' : ''} onClick={() => { setTab('discover'); setActiveMatchId(''); }}>Discover</button>
-            <button className={tab === 'likes' ? 'selected' : ''} onClick={() => { setTab('likes'); setActiveMatchId(''); }}>Likes ({liked.length})</button>
+            <button className={tab === 'likes' ? 'selected' : ''} onClick={() => { setTab('likes'); setActiveMatchId(''); }}>Likes ({incomingLikeCount})</button>
             <button className={tab === 'matches' ? 'selected' : ''} onClick={() => setTab('matches')}>Matches ({matches.length})</button>
             <button className={tab === 'profile' ? 'selected' : ''} onClick={() => { setTab('profile'); setActiveMatchId(''); }}>My profile</button>
           </div></div>}
@@ -774,7 +834,8 @@ export default function App() {
             })}</aside>}
             <section className="chat-panel">{activeMatch ? <>
               <div className="chat-heading">{focusedChatOnly && <button type="button" className="chat-back-button" onClick={() => setFocusedChatOnly(false)} aria-label="Back to matches" title="Back to matches">‹</button>}<span className="match-avatar">{activePerson?.photo_url ? <img src={activePerson.photo_url} alt="" /> : '♡'}</span><div><strong>{activePerson?.display_name || 'Your match'}</strong><small>{focusedChatOnly ? 'Private conversation' : 'Only you and your match can see this chat'}</small></div></div>
-              <div className="chat-tools-note">🔒 Private chat · messages expire after 24 hours</div>
+              <div className="chat-tools-note">🔒 Private chat · messages expire after 24 hours{hasActivePaidSubscription ? ' · Unlimited text chats' : ` · Free new chats today: ${Math.min(dailyChatsUsed, 4)}/4`}</div>
+              {dailyChatLimitReached && <div className="chat-limit-banner"><p>You’ve used all four free new chats for today. Existing conversations remain available. Subscribe to start more new conversations.</p><button type="button" className="button button-primary" onClick={() => setPage('plans')}>View subscription plans</button></div>}
               <div className="chat-messages">{messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id)).length === 0 ? <p className="chat-empty">Every great conversation starts somewhere. Say hello 👋</p> : messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id)).map((message) => <div key={message.id} className={message.sender_id === session.user.id ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" className="message-menu-trigger" title="Message options" aria-label="Message options" aria-expanded={openMessageMenuId === message.id} onClick={() => setOpenMessageMenuId((current) => current === message.id ? null : message.id)}>⋯</button>{openMessageMenuId === message.id && <div className="message-options-menu" role="menu"><button type="button" role="menuitem" onClick={() => replyToChatMessage(message)}>↶ Reply</button>{!message.audio_path && <button type="button" role="menuitem" onClick={() => void translateChatMessage(message)}>{translationBusyId === message.id ? '… Translating' : '文 Translate in DateMe'}</button>}{message.audio_path && <><button type="button" role="menuitem" onClick={() => playVoiceMessage(message)}>▶ Play voice note</button><button type="button" role="menuitem" onClick={() => void downloadVoiceMessage(message)}>↓ Download voice note</button></>}<button type="button" role="menuitem" onClick={() => copyChatMessage(message)}>▢ Copy</button><button type="button" role="menuitem" onClick={() => deleteChatMessageForMe(message)}>Delete for me</button>{message.sender_id === session.user.id && <button type="button" role="menuitem" className="message-delete-action" onClick={() => void deleteChatMessageForEveryone(message)}>Delete for everyone</button>}</div>}</div>{message.reply_to && <p className="reply-reference">↶ {getReplyMessageBody(message.reply_to)}</p>}{message.audio_path && supabase ? <audio id={`voice-${message.id}`} className="message-audio-engine" preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}{translatedMessages[message.id] && <div className="message-translation"><label>Translated in DateMe <select aria-label="Translation language" value={translationLanguage} onChange={(e) => setTranslationLanguage(e.target.value)}><option value="en">English</option><option value="af">Afrikaans</option><option value="zu">isiZulu</option><option value="xh">isiXhosa</option><option value="st">Sesotho</option><option value="tn">Setswana</option><option value="nso">Sepedi</option><option value="fr">French</option><option value="es">Spanish</option><option value="pt">Portuguese</option><option value="de">German</option><option value="it">Italian</option><option value="sw">Swahili</option><option value="ar">Arabic</option><option value="zh-CN">Chinese</option><option value="hi">Hindi</option><option value="ja">Japanese</option><option value="ru">Russian</option><option value="nl">Dutch</option><option value="pl">Polish</option></select></label><p>{translatedMessages[message.id]}</p><button type="button" onClick={() => void translateChatMessage(message)}>Translate again</button></div>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · disappears in 24h</time></div>)}</div>
               {replyTo && <div className="reply-composer"><span>↶ Replying to: {replyTo.body.slice(0, 90)}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
               {voicePreview && <div className="voice-preview"><audio controls src={voicePreview} /><button type="button" onClick={() => { URL.revokeObjectURL(voicePreview); setVoicePreview(null); setVoiceBlob(null); }}>Discard</button><button type="button" onClick={() => void sendVoiceNote()} disabled={recordingBusy}>Send voice note</button></div>}
@@ -789,7 +850,7 @@ export default function App() {
               <div className="compact-person-info"><div className="compact-person-title"><h3>{profile.display_name}{profile.age ? <span>, {profile.age}</span> : null}</h3>{profile.id.startsWith('ai-') && <span className="compact-demo-tag">AI demo</span>}</div><p className="person-city"><span>⌖</span> {profile.city || 'Location not set'}</p><p className="person-bio">{profile.bio || 'A little mystery makes the first hello more fun.'}</p>{profile.interests?.length ? <div className="interest-chips">{profile.interests.slice(0,3).map((interest) => <span key={interest}>{interest}</span>)}</div> : null}{profile.looking_for && <p className="looking-for">♡ {profile.looking_for}</p>}{session && <div className="profile-safety-actions"><button onClick={() => void reportMember(profile)}>Report</button><button onClick={() => void blockMember(profile)}>Block</button></div>}</div>
               <div className="compact-person-actions"><button className={liked.includes(profile.id) ? 'compact-like-button liked' : 'compact-like-button'} type="button" onClick={() => void handleLike(profile)} aria-label={`${liked.includes(profile.id) ? 'Unlike' : 'Like'} ${profile.display_name}`} title={liked.includes(profile.id) ? 'Unlike' : 'Like'}>{liked.includes(profile.id) ? '♥' : '♡'}</button><button className="compact-envelope-button" type="button" aria-label={`Open chat with ${profile.display_name}`} title="Open chats" onClick={() => { if (profile.id.startsWith('ai-')) { setDemoChatPerson(profile); setDemoMessages([{ id: 'welcome-' + profile.id, match_id: profile.id, sender_id: profile.id, body: `Hi! I'm ${profile.display_name}. 😊 What would you like to talk about today?`, created_at: new Date().toISOString(), demo: true }]); setDemoReplyCount(0); setMessageText(''); setFocusedChatOnly(true); setNotice(''); return; } const match = matches.find((item) => item.user_one === profile.id || item.user_two === profile.id); if (match) { openChat(match); return; } setTab('matches'); setFocusedChatOnly(false); setActiveMatchId(''); setNotice(`You need to match with ${profile.display_name} before starting a private chat.`); }}>{/* envelope icon */}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></button></div>
             </article>)}
-          </div> : <div className="empty-state"><span>♡</span><h3>{tab === 'likes' ? 'No likes here yet' : 'No profiles yet'}</h3><p>{tab === 'likes' ? 'Explore people and tap the heart on someone who catches your eye.' : 'New member profiles will show up here as people join DateMe.'}</p><button className="button button-primary" onClick={() => setTab('discover')}>Back to discover</button></div>)}
+          </div> : <div className="empty-state"><span>{tab === 'likes' && incomingLikeCount > 0 && !hasActivePaidSubscription ? '🔒' : '♡'}</span><h3>{tab === 'likes' ? incomingLikeCount > 0 && !hasActivePaidSubscription ? `${incomingLikeCount} people like you` : 'No incoming likes yet' : 'No profiles yet'}</h3><p>{tab === 'likes' ? incomingLikeCount > 0 && !hasActivePaidSubscription ? 'Your liked-by profiles are hidden. Subscribe to reveal the people behind them.' : 'When someone likes your profile, they will appear here.' : 'New member profiles will show up here as people join DateMe.'}</p>{tab === 'likes' && incomingLikeCount > 0 && !hasActivePaidSubscription && <div className="locked-likes-preview"><div className="locked-likes-cards">{Array.from({ length: Math.min(incomingLikeCount, 4) }, (_, index) => <div className="locked-like-card" key={index}><div className="locked-like-avatar">♡<span>🔒</span></div><strong>Secret admirer</strong><small>Profile hidden</small></div>)}</div><button className="button button-primary" type="button" onClick={() => setPage('plans')}>Unlock who likes you</button></div>}<button className="button button-outline" onClick={() => setTab('discover')}>Back to discover</button></div>)}
           {!session && <div className="ai-demo-entry"><h3>Try a conversation</h3><p>Choose a simulated profile to test the chat. These are automated demos, not real members.</p><div className="ai-demo-buttons">{aiProfiles.map(person => <button key={person.id} className="button button-outline" onClick={() => { setDemoChatPerson(person); setDemoMessages([{ id: 'welcome-' + person.id, match_id: person.id, sender_id: person.id, body: person.display_name === 'Sarah' ? 'Hi! 😊 I’m Sarah. What’s something that always makes your day better?' : 'Hey there! 👋 What do you enjoy doing on weekends?', created_at: new Date().toISOString(), demo: true }]); setDemoReplyCount(0); setMessageText(''); setPage('discover'); setTab('discover'); window.scrollTo(0,0); }}>Chat with {person.display_name} · Demo</button>)}</div></div>}
           {demoChatPerson && <section className="demo-chat-panel"><div className="chat-heading"><span className="match-avatar">{demoChatPerson.photo_url ? <img src={demoChatPerson.photo_url} alt="" /> : '♡'}</span><div><strong>{demoChatPerson.display_name} · AI demo</strong><small>Automated practice chat — not a real member</small></div><button className="button button-outline" onClick={() => { setDemoChatPerson(null); setDemoMessages([]); }}>Close</button></div><div className="chat-tools-note">🔒 Simulated chat · contact details are blocked</div><div className="chat-messages">{demoMessages.map(message => <div key={message.id} className={message.sender_id === 'demo-you' ? 'message-bubble mine' : 'message-bubble'}><p>{message.body}</p><time>{new Date(message.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</time></div>)}</div><form className="chat-compose" onSubmit={sendMessage}><input value={messageText} onChange={e => setMessageText(e.target.value)} maxLength={2000} placeholder="Try saying hello…" aria-label="Demo chat message" /><button className="button button-primary" type="submit" disabled={!messageText.trim()}>Send ↗</button></form></section>}
           {!session && <p className="demo-caption">Demo profiles and simulated chats are examples only, not real members. Create an account to connect with real members.</p>}
