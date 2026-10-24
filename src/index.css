@@ -388,3 +388,16 @@ body:has(.focused-chat-overlay) { overflow:hidden; }
   .focused-chat-compose { padding-top:7px; }
   .focused-chat-compose input { padding:9px 12px; }
 }
+
+
+/* Restore the per-message overflow menu without adding clutter to the chat */
+.message-bubble { position:relative; padding-top:25px; }
+.message-actions { position:absolute; top:3px; right:4px; z-index:20; display:flex; align-items:center; justify-content:flex-end; min-height:24px; }
+.message-menu-trigger { display:grid; place-items:center; width:30px; height:25px; padding:0; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--muted); font-size:1.45rem; line-height:1; cursor:pointer; }
+.message-menu-trigger:hover, .message-menu-trigger[aria-expanded="true"] { border-color:var(--line); background:#10283d; color:var(--cream); }
+.message-options-menu { position:absolute; top:27px; right:0; z-index:10000; display:flex; flex-direction:column; gap:2px; width:max-content; min-width:176px; max-width:min(230px,75vw); padding:6px; border:1px solid #40566b; border-radius:12px; background:#07182a; box-shadow:0 12px 34px #0009; }
+.message-options-menu button { display:flex; align-items:center; gap:9px; width:100%; min-height:36px; padding:8px 10px; border:0; border-radius:7px; background:transparent; color:var(--cream); text-align:left; font-size:.78rem; cursor:pointer; }
+.message-options-menu button:hover, .message-options-menu button:focus-visible { outline:none; background:#18344b; }
+.message-options-menu .message-delete-action { color:#ff999e; }
+.focused-chat-messages .message-bubble { padding-top:27px; }
+.focused-chat-messages .message-actions { top:4px; }
