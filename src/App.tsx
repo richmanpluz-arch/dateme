@@ -215,9 +215,12 @@ export default function App() {
   }, [session?.user?.id]);
 
   useEffect(() => {
-    if (!supabase || !session?.user) { setIsAdmin(false); return; }
+    if (!supabase || !session?.user) { setIsAdmin(false); setVoiceAccess(false); return; }
     supabase!.from('admin_users').select('user_id').eq('user_id', session.user.id).maybeSingle()
       .then(({ data }) => setIsAdmin(Boolean(data)));
+    let cancelled = false;
+    supabase!.rpc('dateme_voice_access', { p_user_id: session.user.id }).then(({ data }) => { if (!cancelled) setVoiceAccess(data === true); });
+    return () => { cancelled = true; };
   }, [session?.user?.id]);
   
   useEffect(() => {
@@ -825,16 +828,13 @@ export default function App() {
   }
 
   async function hasPaidMediaAccess(): Promise<boolean> {
-    if (!supabase || !session || !activeMatchId) return false;
-    const { data: matchRow } = await supabase!.from('matches').select('user_one,user_two').eq('id', activeMatchId).maybeSingle();
-    if (!matchRow || ![matchRow.user_one, matchRow.user_two].includes(session.user.id)) return false;
-    const otherId = matchRow.user_one === session.user.id ? matchRow.user_two : matchRow.user_one;
-    const { data: plans } = await supabase!.from('member_subscriptions').select('user_id,plan_code,status,payment_verified,ends_at').in('user_id', [session.user.id, otherId]);
-    return Boolean(plans && plans.length === 2 && plans.every(p => p.status === 'active' && p.payment_verified && p.ends_at && new Date(p.ends_at).getTime() > Date.now()) && plans[0].plan_code === plans[1].plan_code);
+    if (!supabase || !session) return false;
+    const { data, error } = await supabase.rpc('dateme_voice_access', { p_user_id: session.user.id });
+    return !error && data === true;
   }
 
   async function startVoiceRecording() {
-    if (!await hasPaidMediaAccess()) { setNotice('Voice notes require both matched members to have the same active, verified paid subscription tier.'); return; }
+    if (!await hasPaidMediaAccess()) { setNotice('Voice notes are available to the DateMe admin, approved test accounts, and members with an active verified one-year subscription.'); setRecordingBusy(false); return; }
     if (!navigator.mediaDevices?.getUserMedia || !('MediaRecorder' in window)) { setNotice('Voice recording is not supported in this browser. Try an updated browser with microphone permission.'); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -858,7 +858,7 @@ export default function App() {
 
   async function sendVoiceNote() {
     if (!supabase || !session || !activeMatchId || !voiceBlob) return;
-    if (!await hasPaidMediaAccess()) { setNotice('Voice notes require both matched members to have the same active, verified paid subscription tier.'); return; }
+    if (!await hasPaidMediaAccess()) { setNotice('Voice notes are available to the DateMe admin, approved test accounts, and members with an active verified one-year subscription.'); setRecordingBusy(false); return; }
     if (voiceBlob.size > 5 * 1024 * 1024) {
       setNotice('That voice note is too large. Please record a shorter note (maximum 5 MB).');
       return;
@@ -1017,7 +1017,7 @@ export default function App() {
               {replyTo && <div className="reply-composer"><span>↶ Replying to: {replyTo.body.slice(0, 90)}</span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply">×</button></div>}
               {voicePreview && <div className="voice-preview"><audio controls src={voicePreview} /><button type="button" onClick={() => { URL.revokeObjectURL(voicePreview); setVoicePreview(null); setVoiceBlob(null); }}>Discard</button><button type="button" onClick={() => void sendVoiceNote()} disabled={recordingBusy}>Send voice note</button></div>}
               {showEmojiPicker && <div className="emoji-picker" aria-label="Emoji picker">{['😀','😂','🥰','😍','😘','😊','😉','❤️','💕','💖','🔥','👏','👍','🙏','🌹','✨','😢','😅','🤗','💋'].map((emoji) => <button type="button" key={emoji} onClick={() => setMessageText((text) => text + emoji)}>{emoji}</button>)}</div>}
-              <form className="chat-compose" onSubmit={sendMessage}><button type="button" className="chat-tool-button" aria-label="Choose emoji" title="Emoji" onClick={() => setShowEmojiPicker((show) => !show)}>☺</button><input value={messageText} onChange={(e) => setMessageText(e.target.value)} maxLength={2000} placeholder={replyTo ? 'Write a reply…' : 'Write a kind message…'} aria-label="Message" /><button type="button" className="chat-tool-button" aria-label={recording ? 'Stop recording' : 'Record voice note'} title={recording ? 'Stop recording' : 'Record voice note'} onClick={recording ? stopVoiceRecording : () => void startVoiceRecording()} disabled={recordingBusy}>{recording ? '■' : '🎙'}</button><button className="button button-primary" type="submit" disabled={!messageText.trim()}>Send ↗</button></form>
+              <form className="chat-compose" onSubmit={sendMessage}><button type="button" className="chat-tool-button" aria-label="Choose emoji" title="Emoji" onClick={() => setShowEmojiPicker((show) => !show)}>☺</button><input value={messageText} onChange={(e) => setMessageText(e.target.value)} maxLength={2000} placeholder={replyTo ? 'Write a reply…' : 'Write a kind message…'} aria-label="Message" /><button type="button" className="chat-tool-button" aria-label={recording ? 'Stop recording' : 'Record voice note'} title={recording ? 'Stop recording' : 'Record voice note'} onClick={recording ? stopVoiceRecording : () => void startVoiceRecording()} disabled={recordingBusy || !voiceAccess} title={!voiceAccess ? 'Voice notes require admin/test access or an active one-year subscription' : recording ? 'Stop recording' : 'Record voice note'}>{recording ? '■' : '🎙'}</button><button className="button button-primary" type="submit" disabled={!messageText.trim()}>Send ↗</button></form>
             </> : <div className="chat-placeholder"><span>♡</span><h3>A little hello goes a long way.</h3><p>Choose a match to start your conversation.</p></div>}</section>
           </div>}
 
