@@ -151,8 +151,7 @@ Deno.serve(async (req: Request) => {
     if (updateError) throw new Error("Could not save the payment status.");
     const status = String(providerData.status ?? "").toLowerCase();
     if (["success", "successful", "completed"].includes(status)) {
-      await db.rpc("finalize_subscription_payment", { p_order_id: order.id, p_provider_payment_id: String(providerData.reference ?? reference) });
-      return json(200, { order_id: order.id, status: "succeeded", message: "Payment verified. Your subscription is active." });
+      return json(200, { order_id: order.id, status: "pending", message: "OneVoucher reports success. Waiting for its signed notification before activating your subscription." });
     }
     return json(200, { order_id: order.id, status: "pending", message: "OneVoucher is processing the payment. Your plan unlocks only after confirmation." });
   } catch (error) {
