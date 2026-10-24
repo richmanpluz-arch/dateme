@@ -988,7 +988,7 @@ export default function App() {
       recorderChunksRef.current = [];
       recorder.ondataavailable = (event) => { if (event.data.size) recorderChunksRef.current.push(event.data); };
       recorder.onstop = () => {
-        const mimeType = recorder.mimeType || recorderChunksRef.current[0]?.type || 'audio/webm';
+        const mimeType = recorder.mimeType || 'audio/webm';
         const blob = new Blob(recorderChunksRef.current, { type: mimeType });
         setVoiceBlob(blob);
         setVoicePreview(URL.createObjectURL(blob));
