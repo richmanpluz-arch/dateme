@@ -112,12 +112,18 @@ export default function App() {
     const userId = session.user.id;
     if (preferencesLoadedFor !== userId) return;
     localStorage.setItem('dateme-plan-preferences', JSON.stringify(planPreferences));
-    const planCodes = ['week', 'month', 'three_months', 'six_months', 'yearly'];
+    const planPairs = [
+      { uiKey: 'week', planCode: 'week' },
+      { uiKey: 'month', planCode: 'month' },
+      { uiKey: 'quarter', planCode: 'three_months' },
+      { uiKey: 'half', planCode: 'six_months' },
+      { uiKey: 'year', planCode: 'yearly' },
+    ];
     void supabase.from('member_plan_preferences').upsert(
-      planCodes.map(planCode => ({
+      planPairs.map(({ uiKey, planCode }) => ({
         user_id: userId,
         plan_code: planCode,
-        preferences: planPreferences[planCode] || [],
+        preferences: planPreferences[uiKey] || [],
         updated_at: new Date().toISOString(),
       })),
       { onConflict: 'user_id,plan_code' },
@@ -179,7 +185,8 @@ export default function App() {
           setNotice('Could not load your saved plan preferences from your account. Your existing device settings remain available.');
           return;
         }
-        const saved = Object.fromEntries((data || []).map(row => [row.plan_code, row.preferences || []])) as Record<string, string[]>;
+        const uiKeys: Record<string, string> = { week: 'week', month: 'month', three_months: 'quarter', six_months: 'half', yearly: 'year' };
+        const saved = Object.fromEntries((data || []).map(row => [uiKeys[row.plan_code] || row.plan_code, row.preferences || []])) as Record<string, string[]>;
         setPlanPreferences(saved);
         setPreferencesLoadedFor(userId);
       });
