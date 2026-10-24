@@ -233,3 +233,8 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
 .discover-filter-row input:focus { border-color:var(--gold); box-shadow:0 0 0 3px #d8b66a20; }
 .discover-filter-row button { border:1px solid var(--line); border-radius:9px; padding:10px 12px; background:var(--navy-3); color:var(--gold); font-size:.74rem; font-weight:700; white-space:nowrap; }
 @media (max-width:620px) { .discover-filter-row { grid-template-columns:repeat(2,minmax(0,1fr)); } .discover-filter-row label:first-child { grid-column:1 / -1; } .discover-filter-row button { width:100%; } }
+
+
+/* Discovery filter feedback */
+.filter-validation { grid-column:1/-1; margin:0; color:#ffb8bd; font-size:.78rem; line-height:1.45; }
+.filter-result-count { margin:-8px 0 18px; color:var(--muted); font-size:.78rem; }
