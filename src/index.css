@@ -401,3 +401,13 @@ body:has(.focused-chat-overlay) { overflow:hidden; }
 .message-options-menu .message-delete-action { color:#ff999e; }
 .focused-chat-messages .message-bubble { padding-top:27px; }
 .focused-chat-messages .message-actions { top:4px; }
+
+
+/* One combined message menu with an in-chat translation result. */
+.message-translation { margin-top:10px; padding:10px; border:1px solid #46627a; border-radius:10px; background:#0b2034; color:var(--cream); }
+.message-translation label { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:.75rem; color:#d9c58f; }
+.message-translation select { max-width:100%; min-height:32px; padding:5px 8px; border:1px solid #46627a; border-radius:7px; background:#10283d; color:var(--cream); }
+.message-translation p { margin:9px 0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:.9rem; line-height:1.45; }
+.message-translation button { padding:6px 9px; border:1px solid #46627a; border-radius:7px; background:#18344b; color:var(--cream); font-size:.75rem; cursor:pointer; }
+.message-options-menu { max-height:min(70vh,420px); overflow-y:auto; }
+.message-options-menu button { white-space:normal; }
