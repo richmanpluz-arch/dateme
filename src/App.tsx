@@ -350,11 +350,11 @@ export default function App() {
   async function submitSubscriptionRequest() {
     if (!supabase || !session) { setNotice('Sign in before purchasing a subscription.'); return; }
     if (subscriptionSubmitting) return;
-    if (paymentMethod === 'kora_1voucher' && !/^\\d{16}$/.test(voucherPin.replace(/\\s/g, ''))) {
+    if (paymentMethod === 'kora_1voucher' && !/^\d{16}$/.test(voucherPin.replace(/\s/g, ''))) {
       setCheckoutMessage('Enter the 16-digit OneVoucher PIN.');
       return;
     }
-    if (paymentMethod === 'kora_1voucher' && !/^\\+27\\d{9}$/.test(voucherPhone.trim())) {
+    if (paymentMethod === 'kora_1voucher' && !/^\+27\d{9}$/.test(voucherPhone.trim())) {
       setCheckoutMessage('Enter your South African mobile number in +27 format.');
       return;
     }
@@ -368,7 +368,7 @@ export default function App() {
           plan_code: planMap[selectedPlan] || 'week',
           provider: paymentMethod,
           idempotency_key: crypto.randomUUID(),
-          ...(paymentMethod === 'kora_1voucher' ? { voucher_pin: voucherPin.replace(/\\s/g, ''), phone_number: voucherPhone.trim() } : {}),
+          ...(paymentMethod === 'kora_1voucher' ? { voucher_pin: voucherPin.replace(/\s/g, ''), phone_number: voucherPhone.trim() } : {}),
         },
       });
       if (error || !data) {
