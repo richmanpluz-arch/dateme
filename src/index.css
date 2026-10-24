@@ -335,3 +335,12 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
 }
 
 .presence-online { color: #74e2a9 !important; }
+
+.message-menu { position:relative; margin:0 0 4px auto; }
+.message-menu summary { list-style:none; cursor:pointer; text-align:right; color:#d7eee4; font-size:1.25rem; line-height:1.1; }
+.message-menu summary::-webkit-details-marker { display:none; }
+.message-menu[open] .message-actions { display:flex; flex-direction:column; position:absolute; z-index:20; right:0; top:22px; min-width:145px; padding:5px; border:1px solid #315d5a; border-radius:10px; background:#08232d; box-shadow:0 10px 26px #0006; }
+.message-menu:not([open]) .message-actions { display:none; }
+.message-menu .message-actions button { width:100%; text-align:left; padding:8px 10px; font-size:.72rem; }
+.presence-online { color:#74e2a9 !important; }
+.presence-offline { color:#b3ccc6 !important; }
