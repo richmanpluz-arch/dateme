@@ -406,3 +406,8 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
 .message-translation-panel .translation-panel-title { gap:8px; flex-wrap:wrap; font-size:.78rem; }
 .message-translation-panel .translation-original,.message-translation-panel .translation-result { font-size:.76rem; }
 @media(max-width:620px) { .message-menu-below .message-menu-content { width:min(270px, calc(100vw - 52px)); } .message-translation-panel { width:100%; } }
+
+/* Override legacy menu positioning for the new nested, per-message menu. */
+.message-menu-below[open] .message-actions { position:static; right:auto; top:auto; min-width:0; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.message-menu-below:not([open]) .message-menu-content { display:none; }
+.message-menu-below[open] .translation-menu-controls { position:static; }
