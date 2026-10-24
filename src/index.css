@@ -438,3 +438,13 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
 .prompt-idea-buttons { display:flex; flex-wrap:wrap; gap:7px; }
 .prompt-idea-buttons button { padding:7px 9px; border:1px solid #35695f; border-radius:999px; background:#103b37; color:#d9f3e8; font-size:.72rem; text-align:left; }
 .prompt-idea-buttons button:hover { background:#185448; }
+
+
+/* Personalized conversation starters for new matches */
+.chat-empty-state { width:100%; display:grid; justify-items:center; gap:14px; padding:20px 12px; }
+.chat-icebreakers { display:grid; gap:8px; width:min(100%,460px); }
+.chat-icebreakers > strong { color:#c4ded4; font-size:.75rem; letter-spacing:.04em; text-transform:uppercase; }
+.chat-icebreakers button { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; padding:11px 12px; border:1px solid #315c58; border-radius:11px; background:#0b2632; color:#e8f3ef; font-size:.78rem; line-height:1.45; text-align:left; }
+.chat-icebreakers button span { flex:0 0 auto; color:#a7e5c5; font-size:.68rem; font-weight:700; }
+.chat-icebreakers button:hover { border-color:#5caa8b; background:#10372f; }
+@media(max-width:620px) { .chat-empty-state { padding:14px 8px; } .chat-icebreakers button { align-items:flex-start; flex-direction:column; gap:5px; } }
