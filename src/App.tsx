@@ -1603,8 +1603,7 @@ export default function App() {
       const sourceLanguage = typeof payload[2] === 'string' ? payload[2] : '';
       const normalizeLanguage = (code: string) => code.toLowerCase().replace('_', '-').split('-')[0];
       if (sourceLanguage && normalizeLanguage(sourceLanguage) === normalizeLanguage(target)) {
-        const languageNames: Record<string, string> = { en: 'English', zh: 'Chinese', af: 'Afrikaans', zu: 'isiZulu', xh: 'isiXhosa', fr: 'French', es: 'Spanish', pt: 'Portuguese', de: 'German', ja: 'Japanese', ko: 'Korean', hi: 'Hindi', ar: 'Arabic', sw: 'Swahili', ru: 'Russian', it: 'Italian', nl: 'Dutch', tr: 'Turkish', th: 'Thai' };
-        const languageName = languageNames[normalizeLanguage(sourceLanguage)] || 'the selected language';
+        const languageName = translationLanguages.find((language) => language.code.toLowerCase() === target.toLowerCase())?.name || translationLanguages.find((language) => normalizeLanguage(language.code) === normalizeLanguage(sourceLanguage))?.name || 'the selected language';
         setTranslationPanel({ messageId: message.id, original: message.body, translated: '', sourceLanguage, loading: false, error: `This message is already in ${languageName}. Choose a different target language to translate it.` });
         return;
       }
