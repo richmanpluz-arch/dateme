@@ -419,3 +419,22 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
 .voice-preview { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
 .voice-preview audio { flex:1 1 180px; min-width:0; max-width:100%; }
 .recording-status { color:#ff858d; font-size:.8rem; font-weight:700; }
+
+
+/* Profile completion and conversation prompt helpers */
+.profile-completion-card { display:grid; gap:10px; padding:15px; margin:0 0 18px; border:1px solid #315b59; border-radius:14px; background:linear-gradient(135deg,#0d2935,#102b2d); }
+.profile-completion-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.profile-completion-heading h3 { margin:4px 0 0; color:#f4f7f5; font-size:1.05rem; }
+.profile-completion-heading > strong { color:#a8f0c9; font-size:1.4rem; }
+.profile-completion-track { height:8px; overflow:hidden; border-radius:999px; background:#243f49; }
+.profile-completion-track span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#56b99a,#a6e8b7); transition:width .2s ease; }
+.profile-completion-card > p,.prompt-idea-panel > p { margin:0; color:#b9d2cf; font-size:.78rem; line-height:1.5; }
+.profile-completion-checks { display:flex; flex-wrap:wrap; gap:6px; }
+.profile-completion-checks span { padding:5px 8px; border-radius:999px; font-size:.68rem; }
+.profile-completion-checks .completion-done { background:#123e35; color:#b4f0d2; }
+.profile-completion-checks .completion-missing { background:#253742; color:#d2dce0; }
+.prompt-idea-panel { display:grid; gap:8px; padding:12px; border:1px solid var(--line); border-radius:12px; background:#091d2b; }
+.prompt-idea-panel > strong { color:#eaf5ef; font-size:.82rem; }
+.prompt-idea-buttons { display:flex; flex-wrap:wrap; gap:7px; }
+.prompt-idea-buttons button { padding:7px 9px; border:1px solid #35695f; border-radius:999px; background:#103b37; color:#d9f3e8; font-size:.72rem; text-align:left; }
+.prompt-idea-buttons button:hover { background:#185448; }
