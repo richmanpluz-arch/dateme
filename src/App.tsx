@@ -576,14 +576,16 @@ export default function App() {
     }
     if (demoChatPerson) {
       const now = new Date().toISOString();
-      const mine: Message = { id: crypto.randomUUID(), match_id: demoChatPerson.id, sender_id: 'demo-you', body, created_at: now, demo: true };
+      const mine: Message = { id: crypto.randomUUID(), match_id: demoChatPerson.id, sender_id: 'demo-you', body, created_at: now, reply_to: replyTo?.id || null, demo: true };
       setDemoMessages(current => [...current, mine]);
       setMessageText('');
+      setReplyTo(null);
+      setOpenMessageMenuId(null);
       const count = demoReplyCount + 1;
       setDemoReplyCount(count);
       const lower = body.toLowerCase();
       const reply = /\b(hi|hello|hey)\b/.test(lower) ? `Hey 😊 I'm ${demoChatPerson.display_name}. How's your day going?` : /\b(work|job|career)\b/.test(lower) ? 'Tell me more about what you do. What do you enjoy most about it? 😊' : /\b(hobby|hobbies|love doing|free time)\b/.test(lower) ? 'That sounds interesting! I enjoy discovering new things too. What got you into that? 💛' : /\b(date|meet|coffee)\b/.test(lower) ? 'A relaxed coffee and a good conversation sounds lovely ☕ What kind of place do you like?' : /\b(sad|bad day|upset|stress)\b/.test(lower) ? "I'm sorry it's been a tough one. Want to tell me what happened? I'm listening 💛" : demoReplies[(count - 1) % demoReplies.length];
-      window.setTimeout(() => setDemoMessages(current => [...current, { id: crypto.randomUUID(), match_id: demoChatPerson.id, sender_id: demoChatPerson.id, body: reply, created_at: new Date().toISOString(), demo: true }]), 850);
+      window.setTimeout(() => setDemoMessages(current => [...current, { id: crypto.randomUUID(), match_id: demoChatPerson.id, sender_id: demoChatPerson.id, body: reply, created_at: new Date().toISOString(), reply_to: mine.id, demo: true }]), 850);
       return;
     }
     if (!supabase || !session || !activeMatchId) return;
