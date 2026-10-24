@@ -417,9 +417,18 @@ export default function App() {
     return () => { cancelled = true; void supabase!.removeChannel(channel); };
   }, [session, activeMatchId]);
 
+  const ageFilterError = (() => {
+    const minAge = minAgeFilter.trim() ? Number(minAgeFilter) : null;
+    const maxAge = maxAgeFilter.trim() ? Number(maxAgeFilter) : null;
+    if (minAge !== null && (!Number.isInteger(minAge) || minAge < 18 || minAge > 120)) return 'Minimum age must be a whole number from 18 to 120.';
+    if (maxAge !== null && (!Number.isInteger(maxAge) || maxAge < 18 || maxAge > 120)) return 'Maximum age must be a whole number from 18 to 120.';
+    if (minAge !== null && maxAge !== null && minAge > maxAge) return 'Minimum age cannot be greater than maximum age.';
+    return '';
+  })();
+
   const visibleProfiles = useMemo(
     () => (tab === 'likes' ? profiles.filter((profile) => liked.includes(profile.id)) : profiles).filter((profile) => {
-      if (blockedIds.includes(profile.id)) return false;
+      if (ageFilterError || blockedIds.includes(profile.id)) return false;
       const searchable = (profile.display_name + ' ' + (profile.city || '') + ' ' + (profile.bio || '') + ' ' + (profile.interests || []).join(' ')).toLowerCase();
       if (!searchable.includes(searchText.toLowerCase())) return false;
       const minAge = minAgeFilter ? Number(minAgeFilter) : null;
@@ -429,7 +438,7 @@ export default function App() {
       if (cityFilter.trim() && !(profile.city || '').toLowerCase().includes(cityFilter.trim().toLowerCase())) return false;
       return true;
     }),
-    [profiles, liked, tab, blockedIds, searchText, minAgeFilter, maxAgeFilter, cityFilter],
+    [profiles, liked, tab, blockedIds, searchText, minAgeFilter, maxAgeFilter, cityFilter, ageFilterError],
   );
   const activeMatch = matches.find((match) => match.id === activeMatchId) || null;
 
@@ -776,7 +785,9 @@ export default function App() {
             <label>Minimum age<input aria-label="Minimum age" type="number" min={18} max={120} value={minAgeFilter} onChange={(e) => setMinAgeFilter(e.target.value)} placeholder="18" /></label>
             <label>Maximum age<input aria-label="Maximum age" type="number" min={18} max={120} value={maxAgeFilter} onChange={(e) => setMaxAgeFilter(e.target.value)} placeholder="120" /></label>
             <button type="button" onClick={() => { setCityFilter(''); setMinAgeFilter(''); setMaxAgeFilter(''); setSearchText(''); }}>Clear filters</button>
-          </div>}
+            {ageFilterError && <p className="filter-validation" role="alert">{ageFilterError}</p>}
+          </div>
+          {session && tab !== 'profile' && !ageFilterError && <p className="filter-result-count" role="status">Showing {visibleProfiles.length} {visibleProfiles.length === 1 ? 'profile' : 'profiles'}{tab === 'likes' ? ' you liked' : ''}.</p>}
           {session && <div className="member-bar"><span>Signed in as <strong>{session.user.email}</strong></span><div className="member-tabs">
             <button className={tab === 'discover' ? 'selected' : ''} onClick={() => { setTab('discover'); setActiveMatchId(''); }}>Discover</button>
             <button className={tab === 'likes' ? 'selected' : ''} onClick={() => { setTab('likes'); setActiveMatchId(''); }}>Likes ({liked.length})</button>
@@ -845,7 +856,7 @@ export default function App() {
               <div className="person-photo-wrap">{profile.photo_url ? <img className="person-photo" src={profile.photo_url} alt={`${profile.display_name}'s profile`} loading="eager" decoding="async" /> : <div className="photo-placeholder">♡</div>}<span className="profile-number">{String(index + 1).padStart(2, '0')}</span>{profile.id.startsWith('ai-') && <span className="profile-number" style={{left:'auto',right:'12px',top:'12px'}}>AI DEMO</span>}<button className={liked.includes(profile.id) ? 'like-button liked' : 'like-button'} onClick={() => void handleLike(profile)} aria-label={`Like ${profile.display_name}`}>{liked.includes(profile.id) ? '♥' : '♡'}</button></div>
               <div className="person-info"><h3>{profile.display_name}{profile.age ? <span>, {profile.age}</span> : null}</h3><p className="person-city"><span>⌖</span> {profile.city || 'Location not set'}</p><p className="person-bio">{profile.bio || 'A little mystery makes the first hello more fun.'}</p>{profile.prompt_question && <div className="profile-prompt"><small>{profile.prompt_question}</small><p>{profile.prompt_answer}</p></div>}{profile.interests?.length ? <div className="interest-chips">{profile.interests.slice(0,5).map((interest) => <span key={interest}>{interest}</span>)}</div> : null}{profile.looking_for && <p className="looking-for">♡ {profile.looking_for}</p>}<button className="say-hello" onClick={() => profile.id.startsWith('ai-') ? (setDemoChatPerson(profile), setDemoMessages([{ id: 'welcome-' + profile.id, match_id: profile.id, sender_id: profile.id, body: `Hi! I'm ${profile.display_name}. 😊 What would you like to talk about today?`, created_at: new Date().toISOString(), demo: true }]), setDemoReplyCount(0), setMessageText('')) : void handleLike(profile)}>{profile.id.startsWith('ai-') ? 'Open AI chat' : liked.includes(profile.id) ? 'Liked' : 'Say hello'} <span>↗</span></button>{session && <div className="profile-safety-actions"><button onClick={() => void reportMember(profile)}>Report</button><button onClick={() => void blockMember(profile)}>Block</button></div>}</div>
             </article>)}
-          </div> : <div className="empty-state"><span>♡</span><h3>{tab === 'likes' ? 'No likes here yet' : 'No profiles yet'}</h3><p>{tab === 'likes' ? 'Explore people and tap the heart on someone who catches your eye.' : 'New member profiles will show up here as people join DateMe.'}</p><button className="button button-primary" onClick={() => setTab('discover')}>Back to discover</button></div>)}
+          </div> : <div className="empty-state"><span>♡</span><h3>{tab === 'likes' ? 'No likes match these filters' : 'No profiles match yet'}</h3><p>{tab === 'likes' ? 'Try clearing your filters, or explore people and tap the heart on someone who catches your eye.' : 'Try widening the age range, changing the city, or clearing your search filters. New member profiles will show up here as people join DateMe.'}</p><button className="button button-primary" onClick={() => { setCityFilter(''); setMinAgeFilter(''); setMaxAgeFilter(''); setSearchText(''); if (tab === 'likes') setTab('discover'); }}>Clear filters and discover</button></div>)}
           {!session && <div className="ai-demo-entry"><h3>Try a conversation</h3><p>Choose a simulated profile to test the chat. These are automated demos, not real members.</p><div className="ai-demo-buttons">{aiProfiles.map(person => <button key={person.id} className="button button-outline" onClick={() => { setDemoChatPerson(person); setDemoMessages([{ id: 'welcome-' + person.id, match_id: person.id, sender_id: person.id, body: person.display_name === 'Sarah' ? 'Hi! 😊 I’m Sarah. What’s something that always makes your day better?' : 'Hey there! 👋 What do you enjoy doing on weekends?', created_at: new Date().toISOString(), demo: true }]); setDemoReplyCount(0); setMessageText(''); navigateTo('discover'); setTab('discover'); window.scrollTo(0,0); }}>Chat with {person.display_name} · Demo</button>)}</div></div>}
           {demoChatPerson && <section className="demo-chat-panel"><div className="chat-heading"><span className="match-avatar">{demoChatPerson.photo_url ? <img src={demoChatPerson.photo_url} alt="" /> : '♡'}</span><div><strong>{demoChatPerson.display_name} · AI demo</strong><small>Automated practice chat — not a real member</small></div><button className="button button-outline" onClick={() => { setDemoChatPerson(null); setDemoMessages([]); }}>Close</button></div><div className="chat-tools-note">🔒 Simulated chat · contact details are blocked</div><div className="chat-messages">{demoMessages.map(message => <div key={message.id} className={message.sender_id === 'demo-you' ? 'message-bubble mine' : 'message-bubble'}><p>{message.body}</p><time>{new Date(message.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</time></div>)}</div><form className="chat-compose" onSubmit={sendMessage}><input value={messageText} onChange={e => setMessageText(e.target.value)} maxLength={2000} placeholder="Try saying hello…" aria-label="Demo chat message" /><button className="button button-primary" type="submit" disabled={!messageText.trim()}>Send ↗</button></form></section>}
           {!session && <p className="demo-caption">Demo profiles and simulated chats are examples only, not real members. Create an account to connect with real members.</p>}
