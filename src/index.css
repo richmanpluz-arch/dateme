@@ -413,3 +413,22 @@ body:has(.focused-chat-overlay) { overflow:hidden; }
 .message-options-menu button { white-space:normal; }
 
 .message-audio-engine { display:none; }
+
+
+/* Subscription gates: locked incoming likes and the free daily-chat allowance. */
+.locked-likes-preview { display:flex; flex-direction:column; align-items:center; gap:16px; width:100%; margin:20px auto 10px; }
+.locked-likes-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; width:min(100%,440px); }
+.locked-like-card { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; min-height:138px; padding:14px 10px; border:1px solid var(--line); border-radius:15px; background:linear-gradient(145deg,#102b43,#081b2d); color:var(--cream); }
+.locked-like-avatar { position:relative; display:grid; place-items:center; width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg,#e6c8d2,#a88b9e); color:#3d2536; font-size:2rem; filter:blur(3px); }
+.locked-like-avatar span { position:absolute; inset:0; display:grid; place-items:center; filter:blur(0); font-size:1.15rem; text-shadow:0 1px 3px #0008; }
+.locked-like-card strong { font-size:.88rem; }
+.locked-like-card small { color:var(--muted); font-size:.76rem; }
+.chat-limit-banner { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:10px 0; padding:12px 14px; border:1px solid #d8aa65; border-radius:12px; background:#fff5e5; color:#503817; }
+.chat-limit-banner p { margin:0; font-size:.86rem; line-height:1.55; flex:1 1 220px; }
+.chat-limit-banner .button { flex:0 0 auto; }
+@media (max-width:520px) {
+  .locked-likes-cards { gap:8px; }
+  .locked-like-card { min-height:120px; padding:10px 6px; }
+  .chat-limit-banner { align-items:stretch; }
+  .chat-limit-banner .button { width:100%; }
+}
