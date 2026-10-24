@@ -333,3 +333,5 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
   .global-page-actions button { min-height:35px; }
   .portal-page { min-height:calc(100vh - 125px); padding-top:28px; padding-bottom:40px; }
 }
+
+.presence-online { color: #74e2a9 !important; }
