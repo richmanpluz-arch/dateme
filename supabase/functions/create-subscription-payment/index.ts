@@ -77,12 +77,12 @@ Deno.serve(async (req: Request) => {
   }).select("id").single();
   if (insertError || !order) return json(500, { error: "Could not start checkout. Please try again." });
 
-  const configuredAppUrl = Deno.env.get("APP_URL");
-  if (!configuredAppUrl) throw new Error("The app return URL is not configured.");
-  const appUrl = configuredAppUrl.replace(/\/$/, "");
   const callbackUrl = `${supabaseUrl}/functions/v1/payment-webhook?provider=${provider}`;
   try {
     if (provider === "nowpayments") {
+      const configuredAppUrl = Deno.env.get("APP_URL");
+      if (!configuredAppUrl) throw new Error("The app return URL is not configured.");
+      const appUrl = configuredAppUrl.replace(/\/$/, "");
       const apiKey = Deno.env.get("NOWPAYMENTS_API_KEY");
       if (!apiKey || !Deno.env.get("NOWPAYMENTS_IPN_SECRET")) throw new Error("Crypto payments are not configured.");
       const response = await fetch("https://api.nowpayments.io/v1/invoice", {
