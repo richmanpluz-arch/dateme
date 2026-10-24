@@ -1100,8 +1100,7 @@ export default function App() {
     let cancelled = false;
     if (!supabase || !session?.user || !activeMatchId) { setVoiceAccess(false); return; }
     supabase.rpc('dateme_can_exchange_voice', { p_match_id: activeMatchId })
-      .then(({ data }) => { if (!cancelled) setVoiceAccess(data === true); })
-      .catch(() => { if (!cancelled) setVoiceAccess(false); });
+      .then(({ data }) => { if (!cancelled) setVoiceAccess(data === true); }, () => { if (!cancelled) setVoiceAccess(false); });
     return () => { cancelled = true; };
   }, [session?.user?.id, activeMatchId]);
   
