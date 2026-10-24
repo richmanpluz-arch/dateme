@@ -374,3 +374,15 @@ footer .brand-mark { width:26px; height:26px; font-size:.8rem; }
 .chat-translation-launch button { border:1px solid #347d69; border-radius:8px; padding:7px 9px; background:#126548; color:white; font-size:.72rem; font-weight:700; }
 .chat-translation-launch button:disabled { opacity:.45; }
 @media(max-width:620px) { .gallery-heading { flex-direction:column; } .chat-translation-launch { align-items:flex-start; flex-direction:column; } .profile-gallery-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+
+/* Separate spoken-language and translation controls */
+.translation-language-pair { display:flex; flex-wrap:wrap; gap:8px; flex:1 1 100%; }
+.translation-language-pair label,.translation-target-label { display:grid; gap:5px; color:#cfe4dd; font-size:.7rem; font-weight:700; }
+.translation-language-pair select,.translation-target-label select { min-width:145px; max-width:100%; padding:8px 10px; border:1px solid #316c67; border-radius:8px; background:#071b2b; color:#f3f6f4; }
+.translation-launch-copy { display:grid; gap:4px; }
+.translation-launch-copy strong { font-size:.85rem; }
+.translation-launch-copy span { color:#b8d4cb; line-height:1.5; }
+.translation-launch-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.chat-translation-launch .speech-translate-button { background:#176b52; border-color:#4aab8b; }
+.speech-transcript { flex-basis:100%; margin:0; padding:9px 10px; border-radius:8px; background:#061c28; color:#dbeee7; font-size:.8rem; line-height:1.5; }
+@media(max-width:620px) { .translation-language-pair { display:grid; grid-template-columns:1fr 1fr; } .translation-language-pair select { min-width:0; width:100%; } .translation-launch-actions { width:100%; } .translation-launch-actions button { flex:1 1 auto; } }
