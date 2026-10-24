@@ -473,6 +473,18 @@ export default function App() {
     setNotice(profile.display_name + ' has been blocked from your discovery list.');
   }
 
+  async function unblockMember(blockedUserId: string) {
+    if (!supabase || !session) return;
+    const blockedPerson = profiles.find((profile) => profile.id === blockedUserId);
+    const displayName = blockedPerson?.display_name || 'This member';
+    if (!window.confirm('Unblock ' + displayName + '? Their profile may appear in discovery again.')) return;
+    const { error } = await supabase.from('member_blocks').delete()
+      .eq('blocker_id', session.user.id).eq('blocked_user_id', blockedUserId);
+    if (error) { setNotice('Could not unblock this member. Please try again.'); return; }
+    setBlockedIds((current) => current.filter((id) => id !== blockedUserId));
+    setNotice(displayName + ' has been unblocked. You can block them again at any time.');
+  }
+
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase || !session || !myProfile) return;
@@ -687,6 +699,18 @@ export default function App() {
 
           {session && tab === 'profile' && <section className="profile-editor affiliate-panel">
             <div className="editor-fields">
+              <h2>Your safety controls</h2>
+              <p>Manage members you have blocked. Unblocking allows their profile to appear in discovery again; it does not automatically restore a match or conversation.</p>
+              <div className="blocked-member-list">
+                {blockedIds.length === 0 ? <p>No members blocked.</p> : blockedIds.map((blockedUserId) => {
+                  const blockedPerson = profiles.find((profile) => profile.id === blockedUserId);
+                  return <div className="report-row" key={blockedUserId}>
+                    <strong>{blockedPerson?.display_name || 'Blocked member'}</strong>
+                    <small>{blockedPerson?.city || 'Member profile'}</small>
+                    <button className="button button-outline" type="button" onClick={() => void unblockMember(blockedUserId)}>Unblock</button>
+                  </div>;
+                })}
+              </div>
               <h2>Your affiliate link</h2>
               <p>Invite people to DateMe with your personal referral link. This promotion is being rolled out; rewards and unlimited-chat eligibility are subject to the activity and subscription rules.</p>
               {affiliateCode ? <><label>Your personal link<input readOnly value={`${window.location.origin}/?ref=${affiliateCode}`} /></label><button className="button button-primary" type="button" onClick={() => { void navigator.clipboard?.writeText(`${window.location.origin}/?ref=${affiliateCode}`).then(() => setNotice('Your affiliate link has been copied.')).catch(() => setNotice('Copy failed. Please copy the link manually.')); }}>Copy my affiliate link</button><p>Referral code: <strong>{affiliateCode}</strong></p></> : <p>Generating your personal referral link…</p>}
