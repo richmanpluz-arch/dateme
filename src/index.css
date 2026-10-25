@@ -675,3 +675,5 @@ body:has(.subscription-modal-backdrop) { overflow:hidden!important; }
 
 /* Keep route-specific hidden sections out of layout even when component styles set display. */
 [hidden] { display: none !important; }
+
+.verification-onboarding-note { margin:.75rem 0 0; padding:.7rem .8rem; border-left:3px solid var(--gold); border-radius:.35rem; background:rgba(0,107,79,.10); font-size:.84rem; line-height:1.5; }
