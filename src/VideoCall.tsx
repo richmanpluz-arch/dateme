@@ -68,10 +68,11 @@ export default function VideoCall({session,matchId,recipientId,allowed,onNotice}
     if(!supabase||!session||!matchId)return;
     let alive=true;
     const poll=async()=>{
-      const {data,error}=await supabase!.from('member_call_signals').select('id,sender_id,recipient_id,signal_type,payload,created_at').eq('match_id',matchId).order('created_at',{ascending:true}).limit(100);
+      const {data,error}=await supabase!.from('member_call_signals').select('id,sender_id,recipient_id,signal_type,payload,created_at').eq('match_id',matchId).order('created_at',{ascending:false}).limit(100);
       if(!alive||error||!data)return;
-      for(const raw of data as SignalRow[]){
+      for(const raw of [...(data as SignalRow[])].reverse()){
         if(processed.current.has(raw.id))continue;
+        if(raw.signal_type==='ice'&&raw.recipient_id===session.user.id&&!peer.current)continue;
         processed.current.add(raw.id);
         if(raw.sender_id===session.user.id)continue;
         if(raw.signal_type==='offer'&&raw.recipient_id===session.user.id&&!active.current){setIncoming(raw);setCallStatus('Incoming video call');}
