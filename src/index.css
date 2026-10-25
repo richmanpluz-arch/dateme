@@ -485,3 +485,9 @@ body:has(.focused-chat-overlay) { overflow:hidden; }
 @media (max-width:560px) {
   .inbox-notification-button { padding:8px 10px; }
 }
+
+.admin-member-directory { gap:12px; }
+.admin-member-search { display:flex; flex-direction:column; gap:6px; color:var(--muted); font-size:.84rem; }
+.admin-member-search input { width:100%; min-height:42px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:rgba(10,36,56,.7); color:var(--cream); font:inherit; }
+.admin-member-row { gap:7px; }
+.admin-member-row small { overflow-wrap:anywhere; }
