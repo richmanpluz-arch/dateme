@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from './supabase';
+import MemberFeatures from './MemberFeatures';
+import VideoCall from './VideoCall';
 
 type Profile = {
   id: string;
@@ -17,6 +19,8 @@ type Profile = {
 };
 type Match = { id: string; user_one: string; user_two: string; created_at: string };
 type Message = { id: string; match_id: string; sender_id: string; body: string; created_at: string; expires_at?: string; reply_to?: string | null; audio_path?: string | null; demo?: boolean };
+type SubscriptionPrice = { plan_code: string; price_zar: number | null; price_usd: number | null; enabled: boolean };
+type PaymentOrder = { id: string; user_id?: string; plan_code: string; provider: string; status: string; amount: number; currency: string; checkout_url: string | null; created_at: string; paid_at?: string | null };
 
 const aiProfiles: Profile[] = [
   { id: 'ai-sarah', display_name: 'Sarah', age: 27, city: 'Johannesburg', bio: 'Coffee lover, weekend explorer and fan of honest conversations.', photo_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=85', interests: ['Coffee','Travel','Music'] },
@@ -50,7 +54,8 @@ export default function App() {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signup');
   const [showPassword, setShowPassword] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [page, setPage] = useState<'register' | 'home' | 'discover' | 'plans' | 'how' | 'safety' | 'admin'>('register');
+  const [page, setPage] = useState<'register' | 'home' | 'discover' | 'plans' | 'plan-detail' | 'features' | 'how' | 'safety' | 'admin'>('register');
+  const [featureSection, setFeatureSection] = useState('verification');
   const [selectedPlan, setSelectedPlan] = useState('week');
   const [theme, setTheme] = useState<'rose' | 'navy' | 'green'>('navy');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -66,6 +71,7 @@ export default function App() {
   const [liked, setLiked] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('dateme-ai-likes') || '[]') as string[]; } catch { return []; } });
   const [matches, setMatches] = useState<Match[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [messageText, setMessageText] = useState('');
   const [demoChatPerson, setDemoChatPerson] = useState<Profile | null>(null);
   const [demoMessages, setDemoMessages] = useState<Message[]>([]);
@@ -81,6 +87,8 @@ export default function App() {
   const recorderChunksRef = useRef<BlobPart[]>([]);
   const [activeMatchId, setActiveMatchId] = useState('');
   const [focusedChatOnly, setFocusedChatOnly] = useState(false);
+  const [videoCallAllowed, setVideoCallAllowed] = useState(false);
+  const [videoCallRecipientId, setVideoCallRecipientId] = useState('');
   const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
   const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
   const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
@@ -88,6 +96,9 @@ export default function App() {
   const [translationLanguage, setTranslationLanguage] = useState('en');
   const [tab, setTab] = useState<'discover' | 'likes' | 'matches' | 'profile'>('discover');
   const [searchText, setSearchText] = useState('');
+  const [nearbyOnly, setNearbyOnly] = useState(false);
+  const [nearbyProfiles, setNearbyProfiles] = useState<Profile[]>([]);
+  const [nearbyRadius, setNearbyRadius] = useState(10);
   const [blockedIds, setBlockedIds] = useState<string[]>([]);
   const [adminReports, setAdminReports] = useState<Array<{ id: string; reporter_id: string; reported_user_id: string; reason: string; details: string | null; status: string; created_at: string }>>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
@@ -103,6 +114,19 @@ export default function App() {
   const [dailyChatsUsed, setDailyChatsUsed] = useState(0);
   const [dailyChatLimitReached, setDailyChatLimitReached] = useState(false);
   const [adminSubscriptions, setAdminSubscriptions] = useState<Array<{ user_id: string; plan_code: string; status: string; created_at: string; payment_verified: boolean }>>([]);
+  const [adminMembers, setAdminMembers] = useState<Array<{ id: string; display_name: string; age: number | null; city: string | null; created_at: string; plan_code: string; subscription_status: string; payment_verified: boolean; ends_at: string | null }>>([]);
+  const [adminMemberSearch, setAdminMemberSearch] = useState('');
+  const [memberActionBusyId, setMemberActionBusyId] = useState<string | null>(null);
+  const [subscriptionPrices, setSubscriptionPrices] = useState<SubscriptionPrice[]>([]);
+  const [priceSavingPlan, setPriceSavingPlan] = useState<string | null>(null);
+  const [paymentProvider, setPaymentProvider] = useState<'nowpayments' | 'kora_1voucher'>('kora_1voucher');
+  const [planDetailsOpen, setPlanDetailsOpen] = useState(false);
+  const [voucherPin, setVoucherPin] = useState('');
+  const [voucherPhone, setVoucherPhone] = useState('');
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [myPaymentOrders, setMyPaymentOrders] = useState<PaymentOrder[]>([]);
+  const [adminPaymentOrders, setAdminPaymentOrders] = useState<PaymentOrder[]>([]);
   const referralCodeFromUrl = new URLSearchParams(window.location.search).get('ref');
 
   useEffect(() => {
@@ -110,7 +134,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (session?.user) setPage('discover');
+    if (session?.user) setPage(localStorage.getItem('dateme-needs-verification') === session.user.id ? 'features' : 'discover');
     else setPage('register');
   }, [session?.user?.id]);
 
@@ -191,7 +215,9 @@ export default function App() {
       supabase!.from('member_safety_events').select('id, user_id, original_message, detected_reasons, strike_number, action_taken, created_at').order('created_at', { ascending: false }).limit(200),
       supabase!.from('member_safety_status').select('user_id, strike_count, suspended_until, updated_at').order('updated_at', { ascending: false }).limit(200),
       supabase!.from('member_subscriptions').select('user_id,plan_code,status,created_at,payment_verified').eq('status','pending').order('created_at',{ascending:false}).limit(200),
-    ]).then(([reports, events, statuses, subscriptions]) => {
+      supabase!.from('subscription_payment_orders').select('id,user_id,plan_code,provider,status,amount,currency,checkout_url,created_at,paid_at').order('created_at',{ascending:false}).limit(100),
+      supabase!.from('subscription_plan_prices').select('plan_code,price_zar,price_usd,enabled').order('plan_code'),
+    ]).then(([reports, events, statuses, subscriptions, paymentOrders, prices]) => {
       if (cancelled) return;
       if (reports.error) setNotice('Could not load reports. Please check administrator policies.');
       else setAdminReports((reports.data || []) as typeof adminReports);
@@ -200,19 +226,140 @@ export default function App() {
       if (statuses.error) setNotice('Safety status could not be loaded. Check administrator policies.');
       else setSafetyStatus((statuses.data || []) as typeof safetyStatus);
       if (!subscriptions.error) setAdminSubscriptions((subscriptions.data || []) as typeof adminSubscriptions);
+      if (!paymentOrders.error) setAdminPaymentOrders((paymentOrders.data || []) as PaymentOrder[]);
+      if (!prices.error) setSubscriptionPrices((prices.data || []) as SubscriptionPrice[]);
       setReportsLoading(false);
     });
     return () => { cancelled = true; };
   }, [session?.user?.id, isAdmin, page]);
 
+  useEffect(() => {
+    if (!supabase || !session?.user.id || !isAdmin || page !== 'admin') return;
+    let cancelled = false;
+    async function loadAdminMembers() {
+      const [profilesResult, subscriptionsResult] = await Promise.all([
+        supabase!.from('profiles').select('id,display_name,age,city,created_at').order('created_at', { ascending: false }).limit(200),
+        supabase!.from('member_subscriptions').select('user_id,plan_code,status,payment_verified,ends_at').limit(500),
+      ]);
+      if (cancelled) return;
+      if (profilesResult.error || subscriptionsResult.error) {
+        setNotice('The member directory could not be loaded. Check administrator access and database policies.');
+        return;
+      }
+      const subscriptionByUser = new Map((subscriptionsResult.data || []).map((item) => [item.user_id, item]));
+      setAdminMembers((profilesResult.data || []).map((profile) => {
+        const subscription = subscriptionByUser.get(profile.id);
+        return { ...profile, plan_code: subscription?.plan_code || 'free', subscription_status: subscription?.status || 'free', payment_verified: Boolean(subscription?.payment_verified), ends_at: subscription?.ends_at || null };
+      }) as typeof adminMembers);
+    }
+    void loadAdminMembers();
+    return () => { cancelled = true; };
+  }, [session?.user.id, isAdmin, page]);
+
+  const planCodeBySelection: Record<string, string> = { week: 'week', month: 'month', quarter: 'three_months', half: 'six_months', year: 'yearly' };
+  const planLabelByCode: Record<string, string> = { week: '1 week', month: '1 month', three_months: '3 months', six_months: '6 months', yearly: '1 year' };
+  const selectedPlanCode = planCodeBySelection[selectedPlan] || 'week';
+  const selectedPrice = subscriptionPrices.find((item) => item.plan_code === selectedPlanCode);
+  const selectedPaymentAmount = paymentProvider === 'nowpayments' ? selectedPrice?.price_usd : selectedPrice?.price_zar;
+
+  async function refreshPaymentOrders() {
+    if (!supabase || !session) { setMyPaymentOrders([]); return; }
+    const { data, error } = await supabase!.from('subscription_payment_orders')
+      .select('id,plan_code,provider,status,amount,currency,checkout_url,created_at,paid_at')
+      .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(10);
+    if (!error) setMyPaymentOrders((data || []) as PaymentOrder[]);
+  }
+
+  async function refreshAdminPaymentOrders() {
+    if (!supabase || !session || !isAdmin) return;
+    const { data, error } = await supabase!.from('subscription_payment_orders')
+      .select('id,user_id,plan_code,provider,status,amount,currency,checkout_url,created_at,paid_at')
+      .order('created_at', { ascending: false }).limit(100);
+    if (!error) setAdminPaymentOrders((data || []) as PaymentOrder[]);
+  }
+
+  async function startSubscriptionCheckout() {
+    if (!supabase || !session) { setNotice('Sign in before purchasing a subscription.'); return; }
+    if (!selectedPrice?.enabled || !selectedPaymentAmount || Number(selectedPaymentAmount) <= 0) {
+      setNotice('This plan is not available for payment yet. The DateMe owner must set a price and enable it first.');
+      return;
+    }
+    if (paymentProvider === 'kora_1voucher') {
+      if (!/^\d{16}$/.test(voucherPin.replace(/\s/g, ''))) { setNotice('Enter the 16-digit OneVoucher PIN.'); return; }
+      if (!/^\+27\d{9}$/.test(voucherPhone.trim())) { setNotice('Enter a South African mobile number in +27 format.'); return; }
+    }
+    setCheckoutBusy(true);
+    setCheckoutUrl(null);
+    setNotice('Starting secure checkout…');
+    const { data, error } = await supabase!.functions.invoke('create-subscription-payment', {
+      body: {
+        plan_code: selectedPlanCode,
+        provider: paymentProvider,
+        idempotency_key: crypto.randomUUID(),
+        ...(paymentProvider === 'kora_1voucher' ? { voucher_pin: voucherPin.replace(/\s/g, ''), phone_number: voucherPhone.trim() } : {}),
+      },
+    });
+    setCheckoutBusy(false);
+    setVoucherPin('');
+    if (error) {
+      const providerMessage = (data as { error?: string } | null)?.error;
+      setNotice(providerMessage || error.message || 'Could not start checkout. Please try again.');
+      return;
+    }
+    const result = data as { order_id?: string; checkout_url?: string; status?: string; message?: string; error?: string } | null;
+    if (result?.error) { setNotice(result.error); return; }
+    if (result?.checkout_url) {
+      setCheckoutUrl(result.checkout_url);
+      setNotice('Your secure checkout is ready. Open it below to complete payment. Your subscription activates only after the provider confirms payment.');
+    } else {
+      setNotice(result?.message || 'Payment started. Your subscription will unlock only after the payment provider confirms it.');
+    }
+    await refreshPaymentOrders();
+  }
+
+  async function saveSubscriptionPrice(planCode: string) {
+    if (!supabase || !session || !isAdmin) return;
+    const item = subscriptionPrices.find((price) => price.plan_code === planCode);
+    if (!item) return;
+    const zar = item.price_zar === null || String(item.price_zar).trim() === '' ? null : Number(item.price_zar);
+    const usd = item.price_usd === null || String(item.price_usd).trim() === '' ? null : Number(item.price_usd);
+    if ((zar !== null && (!Number.isFinite(zar) || zar <= 0)) || (usd !== null && (!Number.isFinite(usd) || usd <= 0))) {
+      setNotice('Prices must be positive numbers. Leave a currency blank if it is not ready.');
+      return;
+    }
+    if (item.enabled && zar === null && usd === null) { setNotice('Set at least one price before enabling this plan.'); return; }
+    setPriceSavingPlan(planCode);
+    const { error } = await supabase!.from('subscription_plan_prices').upsert({
+      plan_code: planCode, price_zar: zar, price_usd: usd, enabled: item.enabled,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'plan_code' });
+    setPriceSavingPlan(null);
+    if (error) { setNotice('Could not save this plan price. Confirm administrator permissions.'); return; }
+    setSubscriptionPrices(current => current.map(price => price.plan_code === planCode ? { ...price, price_zar: zar, price_usd: usd } : price));
+    setNotice(`${planLabelByCode[planCode] || planCode} pricing saved${item.enabled ? ' and enabled for checkout' : ' (checkout remains disabled)'}.`);
+  }
+
+  function updateSubscriptionPrice(planCode: string, patch: Partial<SubscriptionPrice>) {
+    setSubscriptionPrices(current => current.map(price => price.plan_code === planCode ? { ...price, ...patch } : price));
+  }
+
   async function submitSubscriptionRequest() {
-    if (!supabase || !session) { setNotice('Sign in before requesting a subscription.'); return; }
-    const planMap: Record<string, string> = { week: 'week', month: 'month', quarter: 'three_months', half: 'six_months', year: 'yearly' };
-    const { error } = await supabase!.rpc('request_subscription_plan', { p_plan_code: planMap[selectedPlan] || 'week' });
-    if (error) { setNotice('Could not submit your plan request. Please try again.'); return; }
-    setNotice('Subscription request submitted. Your plan stays locked until payment is verified and an administrator approves it.');
-    const { data } = await supabase!.from('member_subscriptions').select('plan_code,status,ends_at,payment_verified,promo_chat_until').eq('user_id', session.user.id).maybeSingle();
-    if (data) setSubscriptionInfo(data as typeof subscriptionInfo);
+    await startSubscriptionCheckout();
+  }
+
+  async function setMemberSuspension(userId: string, suspend: boolean) {
+    if (!supabase || !session || !isAdmin || memberActionBusyId) return;
+    setMemberActionBusyId(userId);
+    const { error } = await supabase.rpc('admin_set_member_suspension', { p_user_id: userId, p_suspend: suspend });
+    setMemberActionBusyId(null);
+    if (error) { setNotice(suspend ? 'Could not suspend this member. Check administrator permissions.' : 'Could not lift this suspension. Check administrator permissions.'); return; }
+    const updatedAt = new Date().toISOString();
+    setSafetyStatus(current => {
+      const exists = current.some(item => item.user_id === userId);
+      const next = current.map(item => item.user_id === userId ? { ...item, suspended_until: suspend ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null, updated_at: updatedAt } : item);
+      return exists ? next : [...next, { user_id: userId, strike_count: 0, suspended_until: suspend ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null, updated_at: updatedAt }];
+    });
+    setNotice(suspend ? 'Member suspended for 24 hours.' : 'Member suspension lifted.');
   }
 
   async function reviewSubscription(userId: string, planCode: string, approve: boolean) {
@@ -230,6 +377,52 @@ export default function App() {
     setAdminReports(current => current.map(report => report.id === reportId ? { ...report, status } : report));
     setNotice('Report marked ' + status + '.');
   }
+
+  useEffect(() => {
+    if (!supabase || !session?.user.id) { setMyPaymentOrders([]); return; }
+    void refreshPaymentOrders();
+  }, [session?.user.id]);
+
+  useEffect(() => {
+    if (!supabase || !session?.user.id || page !== 'plans') return;
+    let cancelled = false;
+    const refreshStatus = async () => {
+      const [subscription, orders] = await Promise.all([
+        supabase!.from('member_subscriptions').select('plan_code,status,ends_at,payment_verified,promo_chat_until').eq('user_id', session!.user.id).maybeSingle(),
+        supabase!.from('subscription_payment_orders').select('id,plan_code,provider,status,amount,currency,checkout_url,created_at,paid_at').eq('user_id', session!.user.id).order('created_at', { ascending: false }).limit(10),
+      ]);
+      if (cancelled) return;
+      if (subscription.data) setSubscriptionInfo(subscription.data as typeof subscriptionInfo);
+      if (!orders.error) setMyPaymentOrders((orders.data || []) as PaymentOrder[]);
+    };
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void refreshStatus(); }, 15000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [session?.user.id, page]);
+
+  useEffect(() => {
+    if (!supabase || (page !== 'plans' && page !== 'admin')) return;
+    let cancelled = false;
+    async function loadSubscriptionPrices() {
+      if (page === 'admin' && isAdmin) {
+        const { data, error } = await supabase!.from('subscription_plan_prices').select('plan_code,price_zar,price_usd,enabled').order('plan_code');
+        if (!cancelled && !error) setSubscriptionPrices((data || []) as SubscriptionPrice[]);
+        return;
+      }
+      const { data, error } = await supabase!.functions.invoke('subscription-pricing', { method: 'GET' });
+      if (!cancelled && !error) setSubscriptionPrices(((data as { plans?: SubscriptionPrice[] } | null)?.plans || []) as SubscriptionPrice[]);
+    }
+    void loadSubscriptionPrices();
+    return () => { cancelled = true; };
+  }, [page, isAdmin]);
+
+  useEffect(() => {
+    const paymentReturn = new URLSearchParams(window.location.search).get('payment');
+    if (!paymentReturn) return;
+    setNotice(paymentReturn === 'return' ? 'You returned from checkout. We are waiting for verified payment confirmation; refresh your subscription status shortly.' : 'Checkout was cancelled. Your subscription has not changed.');
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('payment');
+    window.history.replaceState({}, '', cleanUrl.toString());
+  }, []);
 
   useEffect(() => {
     if (!supabase) { setCheckingSession(false); return; }
@@ -287,7 +480,17 @@ export default function App() {
       await supabase!.from('messages').delete().eq('match_id', activeMatchId).lt('expires_at', new Date().toISOString());
       if (cancelled) return;
       if (error) setNotice('Could not load this conversation.');
-      else setMessages((data || []) as Message[]);
+      else {
+        const loadedMessages = (data || []) as Message[];
+        setMessages(loadedMessages);
+        const incomingIds = loadedMessages.filter((message) => message.sender_id !== session!.user.id && (!message.expires_at || new Date(message.expires_at).getTime() > Date.now())).map((message) => message.id);
+        if (incomingIds.length) {
+          const readAt = new Date().toISOString();
+          const receipts = incomingIds.map((message_id) => ({ message_id, user_id: session!.user.id, delivered_at: readAt, read_at: readAt }));
+          const { error: receiptError } = await supabase!.from('message_receipts').upsert(receipts, { onConflict: 'message_id,user_id' });
+          if (receiptError) console.warn('Could not update message read receipts.', receiptError.message);
+        }
+      }
     }
     void loadMessages();
     const channel = supabase!.channel(`messages-${activeMatchId}`)
@@ -301,6 +504,30 @@ export default function App() {
 
   const activeMatch = matches.find((match) => match.id === activeMatchId) || null;
   const hasActivePaidSubscription = Boolean(subscriptionInfo && subscriptionInfo.plan_code !== 'free' && subscriptionInfo.status === 'active' && subscriptionInfo.payment_verified && subscriptionInfo.ends_at && new Date(subscriptionInfo.ends_at).getTime() > Date.now());
+
+  useEffect(() => {
+    if (!supabase || !session?.user.id || matches.length === 0) { setUnreadMessageCount(0); return; }
+    let cancelled = false;
+    const matchIds = matches.map((match) => match.id);
+    async function refreshUnreadCount() {
+      const [messageResult, receiptResult] = await Promise.all([
+        supabase!.from('messages').select('id, sender_id, expires_at').in('match_id', matchIds),
+        supabase!.from('message_receipts').select('message_id, read_at').eq('user_id', session!.user.id),
+      ]);
+      if (cancelled) return;
+      if (messageResult.error || receiptResult.error) return;
+      const readAtByMessage = new Map((receiptResult.data || []).map((receipt) => [receipt.message_id, receipt.read_at]));
+      const now = Date.now();
+      const unread = (messageResult.data || []).filter((message) => message.sender_id !== session!.user.id && (!message.expires_at || new Date(message.expires_at).getTime() > now) && !readAtByMessage.get(message.id)).length;
+      setUnreadMessageCount(unread);
+    }
+    void refreshUnreadCount();
+    const channel = supabase.channel(`message-notifications-${session.user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { void refreshUnreadCount(); })
+      .subscribe();
+    const refreshTimer = window.setInterval(() => { void refreshUnreadCount(); }, 30000);
+    return () => { cancelled = true; window.clearInterval(refreshTimer); void supabase!.removeChannel(channel); };
+  }, [session?.user.id, matches.map((match) => match.id).join('|')]);
 
   useEffect(() => {
     if (!supabase || !session?.user.id) {
@@ -343,8 +570,8 @@ export default function App() {
   }, [session?.user.id]);
 
   const visibleProfiles = useMemo(
-    () => (tab === 'likes' ? (hasActivePaidSubscription ? incomingLikes : []) : profiles).filter((profile) => !blockedIds.includes(profile.id) && (profile.display_name + ' ' + (profile.city || '') + ' ' + (profile.bio || '') + ' ' + (profile.interests || []).join(' ')).toLowerCase().includes(searchText.toLowerCase())),
-    [profiles, incomingLikes, hasActivePaidSubscription, tab, blockedIds, searchText],
+    () => (tab === 'likes' ? (hasActivePaidSubscription ? incomingLikes : []) : nearbyOnly && tab === 'discover' ? nearbyProfiles : profiles).filter((profile) => !blockedIds.includes(profile.id) && (profile.display_name + ' ' + (profile.city || '') + ' ' + (profile.bio || '') + ' ' + (profile.interests || []).join(' ')).toLowerCase().includes(searchText.toLowerCase())),
+    [profiles, incomingLikes, nearbyProfiles, nearbyOnly, hasActivePaidSubscription, tab, blockedIds, searchText],
   );
 
   useEffect(() => {
@@ -362,6 +589,21 @@ export default function App() {
     return () => { cancelled = true; };
   }, [messages, session?.user.id]);
   const activePerson = activeMatch ? profiles.find((profile) => profile.id === (activeMatch.user_one === session?.user.id ? activeMatch.user_two : activeMatch.user_one)) : null;
+
+  useEffect(() => {
+    if (!supabase || !session || !activeMatchId) { setVideoCallAllowed(false); setVideoCallRecipientId(''); return; }
+    const match = matches.find((item) => item.id === activeMatchId);
+    if (!match) return;
+    const otherId = match.user_one === session.user.id ? match.user_two : match.user_one;
+    setVideoCallRecipientId(otherId);
+    let cancelled = false;
+    supabase.from('member_subscriptions').select('user_id,plan_code,status,payment_verified,ends_at').in('user_id', [session.user.id, otherId]).then(({ data }) => {
+      if (cancelled) return;
+      const valid = Boolean(data && data.length === 2 && data.every((item) => item.plan_code === 'yearly' && item.status === 'active' && item.payment_verified && item.ends_at && new Date(item.ends_at).getTime() > Date.now()));
+      setVideoCallAllowed(valid);
+    });
+    return () => { cancelled = true; };
+  }, [session?.user.id, activeMatchId, matches]);
 
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setNotice('');
@@ -390,6 +632,7 @@ export default function App() {
         const { data, error } = await supabase!.auth.signUp({ email: email.trim(), password, options: { data: { display_name: displayName.trim(), age } } });
         if (error) throw error;
         if (data.user) {
+          localStorage.setItem('dateme-needs-verification', data.user.id);
           const { error: profileError } = await supabase!.from('profiles').upsert({ id: data.user.id, display_name: displayName.trim(), age, city: null, bio: null, photo_url: null }, { onConflict: 'id', ignoreDuplicates: true });
           if (profileError) setNotice('Your account was created, but your profile needs finishing in My profile.');
         }
@@ -409,6 +652,17 @@ export default function App() {
     const { error } = await supabase!.auth.signOut();
     setNotice(error ? error.message : 'You have signed out.');
     setTab('discover'); setActiveMatchId('');
+  }
+
+  async function showNearbyProfiles() {
+    if (!supabase || !session) { setNotice('Sign in to use nearby discovery.'); return; }
+    const prefs = await supabase.from('member_location_preferences').select('max_distance_km,latitude,longitude').eq('user_id', session.user.id).maybeSingle();
+    if (prefs.error || prefs.data?.latitude == null || prefs.data?.longitude == null) { setNotice('Open More member features → Location discovery, grant approximate location permission, and save your preferences first.'); setPage('features'); return; }
+    const radius = [5,10,50].includes(Number(prefs.data.max_distance_km)) ? Number(prefs.data.max_distance_km) : 10;
+    const result = await supabase.rpc('get_nearby_profiles', { p_max_distance_km: radius });
+    if (result.error) { setNotice('Nearby discovery could not load. Check location consent and database setup.'); return; }
+    setNearbyRadius(radius); setNearbyProfiles((result.data || []) as Profile[]); setNearbyOnly(true); setTab('discover'); setActiveMatchId('');
+    setNotice((result.data || []).length ? 'Showing members who opted in to nearby discovery within ' + radius + ' km.' : 'No opted-in members were found within ' + radius + ' km.');
   }
 
   async function handleLike(profile: Profile) {
@@ -448,6 +702,15 @@ export default function App() {
       }
     }
     setNotice(`You liked ${profile.display_name}. Fingers crossed!`);
+  }
+
+  async function sendSuperLike(profile: Profile) {
+    if (!supabase || !session) { setNotice('Sign in to send a Super Like.'); return; }
+    if (profile.id.startsWith('ai-')) { setNotice('Super Likes are only available for real member profiles.'); return; }
+    const { data, error } = await supabase.rpc('send_super_like', { p_target_user_id: profile.id });
+    if (error) { setNotice(error.message.includes('coin') ? 'You need a coin to send a Super Like. Coin balance: open More member features → Super Likes & coins.' : error.message); return; }
+    await handleLike(profile);
+    setNotice('Super Like sent to ' + profile.display_name + '. Coins remaining: ' + String(data) + '.');
   }
 
   async function reportMember(profile: Profile) {
@@ -632,6 +895,7 @@ export default function App() {
       setDemoMessages(current => [...current, mine]);
       setMessageText('');
       setReplyTo(null);
+      setShowEmojiPicker(false);
       setOpenMessageMenuId(null);
       const count = demoReplyCount + 1;
       setDemoReplyCount(count);
@@ -754,6 +1018,17 @@ export default function App() {
             <button onClick={() => { setPage('plans'); setMenuOpen(false); window.scrollTo(0,0); }}>Subscription plans</button>
             <button onClick={() => { setPage('how'); setMenuOpen(false); window.scrollTo(0,0); }}>How DateMe works</button>
             <button onClick={() => { setPage('safety'); setMenuOpen(false); window.scrollTo(0,0); }}>Safety centre</button>
+             <button onClick={() => { setFeatureSection('verification'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Facial verification</button>
+             <button onClick={() => { setFeatureSection('support'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Admin support chat</button>
+             <button onClick={() => { setFeatureSection('voice'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Voice introduction</button>
+             <button onClick={() => { setFeatureSection('quiz'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Compatibility quiz</button>
+             <button onClick={() => { setFeatureSection('coins'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Super Likes and coins</button>
+             <button onClick={() => { setFeatureSection('boosts'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Profile boosts</button>
+             <button onClick={() => { setFeatureSection('location'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Location discovery</button>
+             <button onClick={() => { setFeatureSection('events'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Events and groups</button>
+             <button onClick={() => { setFeatureSection('icebreakers'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Icebreakers</button>
+             <button onClick={() => { setFeatureSection('contacts'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Block contacts</button>
+             <button onClick={() => { setFeatureSection('notifications'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Notification settings</button>
             <button onClick={() => { setPage('admin'); setMenuOpen(false); window.scrollTo(0,0); }}>Admin portal</button>
             <button onClick={() => { setTheme(theme === 'rose' ? 'navy' : theme === 'navy' ? 'green' : 'rose'); setMenuOpen(false); }}>Change theme: {theme === 'rose' ? 'Rose' : theme === 'navy' ? 'Navy' : 'Green'}</button>
             {!session && <button onClick={() => { setPage('register'); setMenuOpen(false); window.scrollTo({top:0,behavior:'smooth'}); }}>Register / sign in</button>}
@@ -793,9 +1068,11 @@ export default function App() {
           <div className="section-heading"><div><span className="eyebrow">GOOD PEOPLE, REAL POSSIBILITIES</span><h2>{session ? tab === 'matches' ? 'Your connections' : tab === 'profile' ? 'Your story, your way' : tab === 'likes' ? 'People who liked you' : 'People you might like' : 'A little closer to your person'}</h2><p>{tab === 'likes' ? 'Your likes are private until your subscription unlocks them.' : 'Start with a smile. See where a conversation takes you.'}</p></div><span className="section-flower" aria-hidden="true">✳</span></div>
           {session && <div className="discover-search"><span>⌕</span><input aria-label="Search members" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search by name, city or interests…" /><button type="button" onClick={() => setSearchText('')}>Clear</button></div>}
           {session && <div className="member-bar"><span>Signed in as <strong>{session.user.email}</strong></span><div className="member-tabs">
-            <button className={tab === 'discover' ? 'selected' : ''} onClick={() => { setTab('discover'); setActiveMatchId(''); }}>Discover</button>
+            <button className={tab === 'discover' && !nearbyOnly ? 'selected' : ''} onClick={() => { setTab('discover'); setNearbyOnly(false); setActiveMatchId(''); }}>Discover</button>
+            <button className={nearbyOnly ? 'selected' : ''} onClick={() => void showNearbyProfiles()}>Near me ({nearbyRadius} km)</button>
             <button className={tab === 'likes' ? 'selected' : ''} onClick={() => { setTab('likes'); setActiveMatchId(''); }}>Likes ({incomingLikeCount})</button>
             <button className={tab === 'matches' ? 'selected' : ''} onClick={() => setTab('matches')}>Matches ({matches.length})</button>
+            <button className="inbox-notification-button" onClick={() => { setTab('matches'); setActiveMatchId(''); setNotice(unreadMessageCount ? `You have ${unreadMessageCount} unread message${unreadMessageCount === 1 ? '' : 's'}. Open a match to read them.` : 'You are all caught up.'); }} aria-label={`Inbox, ${unreadMessageCount} unread messages`}>Inbox {unreadMessageCount > 0 && <span className="unread-message-badge">{unreadMessageCount > 99 ? '99+' : unreadMessageCount}</span>}</button>
             <button className={tab === 'profile' ? 'selected' : ''} onClick={() => { setTab('profile'); setActiveMatchId(''); }}>My profile</button>
           </div></div>}
 
@@ -848,7 +1125,7 @@ export default function App() {
             {visibleProfiles.map((profile) => <article className="person-card compact-person-card" key={profile.id}>
               <div className="compact-person-avatar">{profile.photo_url ? <img className="person-photo" src={profile.photo_url} alt={`${profile.display_name}'s profile`} loading="eager" decoding="async" /> : <div className="photo-placeholder">♡</div>}</div>
               <div className="compact-person-info"><div className="compact-person-title"><h3>{profile.display_name}{profile.age ? <span>, {profile.age}</span> : null}</h3>{profile.id.startsWith('ai-') && <span className="compact-demo-tag">AI demo</span>}</div><p className="person-city"><span>⌖</span> {profile.city || 'Location not set'}</p><p className="person-bio">{profile.bio || 'A little mystery makes the first hello more fun.'}</p>{profile.interests?.length ? <div className="interest-chips">{profile.interests.slice(0,3).map((interest) => <span key={interest}>{interest}</span>)}</div> : null}{profile.looking_for && <p className="looking-for">♡ {profile.looking_for}</p>}{session && <div className="profile-safety-actions"><button onClick={() => void reportMember(profile)}>Report</button><button onClick={() => void blockMember(profile)}>Block</button></div>}</div>
-              <div className="compact-person-actions"><button className={liked.includes(profile.id) ? 'compact-like-button liked' : 'compact-like-button'} type="button" onClick={() => void handleLike(profile)} aria-label={`${liked.includes(profile.id) ? 'Unlike' : 'Like'} ${profile.display_name}`} title={liked.includes(profile.id) ? 'Unlike' : 'Like'}>{liked.includes(profile.id) ? '♥' : '♡'}</button><button className="compact-envelope-button" type="button" aria-label={`Open chat with ${profile.display_name}`} title="Open chats" onClick={() => { if (profile.id.startsWith('ai-')) { setDemoChatPerson(profile); setDemoMessages([{ id: 'welcome-' + profile.id, match_id: profile.id, sender_id: profile.id, body: `Hi! I'm ${profile.display_name}. 😊 What would you like to talk about today?`, created_at: new Date().toISOString(), demo: true }]); setDemoReplyCount(0); setMessageText(''); setFocusedChatOnly(true); setNotice(''); return; } const match = matches.find((item) => item.user_one === profile.id || item.user_two === profile.id); if (match) { openChat(match); return; } setTab('matches'); setFocusedChatOnly(false); setActiveMatchId(''); setNotice(`You need to match with ${profile.display_name} before starting a private chat.`); }}>{/* envelope icon */}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></button></div>
+              <div className="compact-person-actions"><button className={liked.includes(profile.id) ? 'compact-like-button liked' : 'compact-like-button'} type="button" onClick={() => void handleLike(profile)} aria-label={`${liked.includes(profile.id) ? 'Unlike' : 'Like'} ${profile.display_name}`} title={liked.includes(profile.id) ? 'Unlike' : 'Like'}>{liked.includes(profile.id) ? '♥' : '♡'}</button>{session && !profile.id.startsWith('ai-') && <button className="compact-superlike-button" type="button" onClick={() => void sendSuperLike(profile)} title="Send a Super Like (uses one coin)" aria-label={`Super Like ${profile.display_name}`}>★</button>}<button className="compact-envelope-button" type="button" aria-label={`Open chat with ${profile.display_name}`} title="Open chats" onClick={() => { if (profile.id.startsWith('ai-')) { setDemoChatPerson(profile); setDemoMessages([{ id: 'welcome-' + profile.id, match_id: profile.id, sender_id: profile.id, body: `Hi! I'm ${profile.display_name}. 😊 What would you like to talk about today?`, created_at: new Date().toISOString(), demo: true }]); setDemoReplyCount(0); setMessageText(''); setFocusedChatOnly(true); setNotice(''); return; } const match = matches.find((item) => item.user_one === profile.id || item.user_two === profile.id); if (match) { openChat(match); return; } setTab('matches'); setFocusedChatOnly(false); setActiveMatchId(''); setNotice(`You need to match with ${profile.display_name} before starting a private chat.`); }}>{/* envelope icon */}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></button></div>
             </article>)}
           </div> : <div className="empty-state"><span>{tab === 'likes' && incomingLikeCount > 0 && !hasActivePaidSubscription ? '🔒' : '♡'}</span><h3>{tab === 'likes' ? incomingLikeCount > 0 && !hasActivePaidSubscription ? `${incomingLikeCount} people like you` : 'No incoming likes yet' : 'No profiles yet'}</h3><p>{tab === 'likes' ? incomingLikeCount > 0 && !hasActivePaidSubscription ? 'Your liked-by profiles are hidden. Subscribe to reveal the people behind them.' : 'When someone likes your profile, they will appear here.' : 'New member profiles will show up here as people join DateMe.'}</p>{tab === 'likes' && incomingLikeCount > 0 && !hasActivePaidSubscription && <div className="locked-likes-preview"><div className="locked-likes-cards">{Array.from({ length: Math.min(incomingLikeCount, 4) }, (_, index) => <div className="locked-like-card" key={index}><div className="locked-like-avatar"><span className="locked-like-heart">♡</span><span className="locked-like-lock">🔒</span></div><strong>Secret admirer</strong><small>Profile hidden</small></div>)}</div><button className="button button-primary" type="button" onClick={() => setPage('plans')}>Unlock who likes you</button></div>}<button className="button button-outline" onClick={() => setTab('discover')}>Back to discover</button></div>)}
           {!session && <div className="ai-demo-entry"><h3>Try a conversation</h3><p>Choose a simulated profile to test the chat. These are automated demos, not real members.</p><div className="ai-demo-buttons">{aiProfiles.map(person => <button key={person.id} className="button button-outline" onClick={() => { setDemoChatPerson(person); setDemoMessages([{ id: 'welcome-' + person.id, match_id: person.id, sender_id: person.id, body: person.display_name === 'Sarah' ? 'Hi! 😊 I’m Sarah. What’s something that always makes your day better?' : 'Hey there! 👋 What do you enjoy doing on weekends?', created_at: new Date().toISOString(), demo: true }]); setDemoReplyCount(0); setMessageText(''); setPage('discover'); setTab('discover'); window.scrollTo(0,0); }}>Chat with {person.display_name} · Demo</button>)}</div></div>}
@@ -857,8 +1134,9 @@ export default function App() {
           {notice && session && <p className="notice member-notice" role="status">{notice}</p>}
         </section>}
 
-        {page === 'plans' && <section className="portal-page membership-section" id="membership-plans"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">YOUR JOURNEY, YOUR PACE</span><h2>Membership <span>plans.</span></h2><p>Choose a subscription period to request activation. Free accounts can start four new text conversations per South African calendar day, and existing conversations can continue. Incoming likes stay blurred until a paid subscription is active and verified. Payments must be verified and an administrator must approve the subscription before paid features unlock.</p>{session && <p>Your current status: <strong>{subscriptionInfo?.status || 'free'}</strong> · Plan: <strong>{subscriptionInfo?.plan_code || 'free'}</strong>{subscriptionInfo?.ends_at ? ` · Ends ${new Date(subscriptionInfo.ends_at).toLocaleDateString()}` : ''}</p>}<div className="plan-periods">{[{id:'week',label:'Per Week',period:'7 days'},{id:'month',label:'Per Month',period:'1 month'},{id:'quarter',label:'3 Months',period:'3 months'},{id:'half',label:'6 Months',period:'6 months'},{id:'year',label:'1 Year',period:'12 months'}].map(plan => <button key={plan.id} className={selectedPlan===plan.id?'plan-period selected':'plan-period'} onClick={() => setSelectedPlan(plan.id)}>{plan.label}<small>{plan.period}</small></button>)}</div><div className="plan-detail"><span className="draft-label">DRAFT · NOT FOR SALE</span><h3>{{week:'Per Week · 7 days',month:'Per Month',quarter:'3 Months',half:'6 Months',year:'1 Year · 12 months'}[selectedPlan]}</h3><div className="draft-price">Price: <strong>To be decided</strong></div><h4>Proposed benefits to discuss</h4><ul><li>Create and edit your dating profile</li><li>Discover member profiles and send likes</li><li>Report and block inappropriate behaviour.</li>{selectedPlan==='week' && <li>Basic text chat only in this draft tier.</li>}{selectedPlan==='month' && <li>Text chat and limited photo sharing (proposed).</li>}{selectedPlan==='quarter' && <li>Text chat and photo sharing; video-sharing limits to be defined.</li>}{selectedPlan==='half' && <li>Text, photo and limited video sharing; proposed in-app voice calls. No video calling.</li>}{selectedPlan==='year' && <><li>Text messages, photo and video sharing, subject to safety and file-size limits.</li><li>In-app voice calls and video calling with mutual matches.</li><li>Included message allowance; final fair-use limit to be defined.</li></>}</ul>{session ? <button className="button button-primary" type="button" onClick={() => void submitSubscriptionRequest()}>Request this plan</button> : <p>Sign in to request a subscription.</p>}<p>Requesting a plan does not count as payment. Paid features unlock only after real payment verification and administrator approval.</p></div></section>}
-        {page === 'admin' && <section className="portal-page membership-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">OWNER ACCESS</span><h2>Administrator <span>portal.</span></h2>{isAdmin ? <div className="plan-detail"><h3>Admin access verified</h3><p>Signed in as {session?.user.email}. The secure admin area is reserved for accounts granted access in the database.</p><p>Review member reports, contact-sharing violations, strike history, and 24-hour suspensions below. Messages containing detected contact details are stored as asterisks for other members; the restricted safety log preserves the original message for administrator review.</p><div className="admin-report-list"><h3>Subscription approval queue</h3>{adminSubscriptions.length === 0 ? <p>No pending subscription requests.</p> : adminSubscriptions.map(item => <article className="admin-report" key={item.user_id}><strong>Member: {item.user_id}</strong><p>Requested plan: {item.plan_code}</p><small>Requested: {new Date(item.created_at).toLocaleString()}</small><div className="admin-report-actions"><button onClick={() => void reviewSubscription(item.user_id, item.plan_code, true)}>Approve after payment verified</button><button onClick={() => void reviewSubscription(item.user_id, item.plan_code, false)}>Decline</button></div><p>Only approve after independently confirming the payment has been received.</p></article>)}</div><div className="admin-report-list"><h3>Safety history &amp; suspensions</h3>{reportsLoading ? <p>Loading safety history…</p> : safetyEvents.length === 0 ? <p>No contact-sharing violations recorded.</p> : safetyEvents.map(item => <article className="admin-report" key={item.id}><div className="admin-report-heading"><strong>{item.action_taken === 'suspended_24h' ? '24-hour suspension applied' : 'Message redacted · warning issued'}</strong><span className={'report-status ' + (item.action_taken === 'suspended_24h' ? 'status-open' : 'status-reviewing')}>Strike {item.strike_number}</span></div><p><strong>Original message (admin only):</strong> {item.original_message}</p><p><strong>Detection reasons:</strong> {item.detected_reasons.join(', ')}</p><small>Member ID: {item.user_id} · {new Date(item.created_at).toLocaleString()}</small></article>)}<h3>Current safety status</h3>{safetyStatus.length === 0 ? <p>No safety status records yet.</p> : safetyStatus.map(item => <article className="admin-report" key={item.user_id}><strong>Member ID: {item.user_id}</strong><p>Recent strikes: {item.strike_count}</p><p>Suspended until: {item.suspended_until ? new Date(item.suspended_until).toLocaleString() : 'Not currently suspended'}</p><small>Last updated: {new Date(item.updated_at).toLocaleString()}</small></article>)}</div><div className="admin-report-list"><h3>Member safety reports</h3>{reportsLoading ? <p>Loading reports…</p> : adminReports.length === 0 ? <p>No reports have been submitted.</p> : adminReports.map(report => <article className="admin-report" key={report.id}><div className="admin-report-heading"><strong>{report.reason || 'Member report'}</strong><span className={'report-status status-' + report.status}>{report.status}</span></div><p>{report.details || 'No extra details provided.'}</p><small>Reported member: {report.reported_user_id} · Submitted: {new Date(report.created_at).toLocaleString()}</small><div className="admin-report-actions"><button onClick={() => void updateReportStatus(report.id, 'reviewing')}>Mark reviewing</button><button onClick={() => void updateReportStatus(report.id, 'resolved')}>Resolve</button><button onClick={() => void updateReportStatus(report.id, 'dismissed')}>Dismiss</button></div></article>)}</div></div> : <div className="plan-detail"><h3>Restricted access</h3><p>Your account has not been granted administrator privileges. For security, admin access cannot be self-assigned from this public page.</p><p>Create a separate owner account below. After you register and confirm its email, send me that email address only so the account can be granted administrator access securely. Do not send your password or verification codes. Admin accounts will be exempt from subscription charges once the owner role is provisioned.</p><div className="admin-report-actions"><button className="button button-primary" onClick={() => { setPage('register'); setMode('signup'); setNotice('Register the separate account you want to use as DateMe owner. After email confirmation, send the account email address only so owner access can be provisioned.'); window.scrollTo(0,0); }}>Register owner account</button><button className="button button-outline" onClick={() => { setPage('register'); setMode('signin'); setNotice('Sign in with your separate owner account. If it has not yet been granted administrator access, send its email address only.'); window.scrollTo(0,0); }}>Sign in to owner account</button></div></div>}</section>}
+        {(page === 'plans' || page === 'plan-detail') && <section className="portal-page membership-section subscription-detail-route" id="membership-plans"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">YOUR JOURNEY, YOUR PACE</span><h2>Membership <span>plans.</span></h2><p>Choose your subscription period and save more with longer memberships. Free members can start four new text conversations per South African calendar day; existing conversations remain available. Incoming likes stay locked until a paid subscription is active and verified. Premium communication features require both matched members to have the same active, verified tier.</p>{session && <p className="current-subscription-status">Your current status: <strong>{subscriptionInfo?.status || 'free'}</strong> · Plan: <strong>{subscriptionInfo?.plan_code || 'free'}</strong>{subscriptionInfo?.ends_at ? ` · Ends ${new Date(subscriptionInfo.ends_at).toLocaleDateString()}` : ''}</p>}<div className="subscription-showcase"><div className="subscription-showcase-brand"><span className="subscription-heart-mark">♡</span><div><strong>Date<span>Me</span></strong><small>REAL PEOPLE · REAL CONNECTIONS · LASTING MOMENTS</small></div></div><p className="subscription-showcase-tagline">More time. More chances.<br/>Find your special someone.</p><div className="subscription-showcase-heading"><span></span><h3>CHOOSE YOUR SUBSCRIPTION PLAN</h3><span></span></div><p className="subscription-showcase-subtitle">Unlock more features, connect with more people, and get the most out of your DateMe experience.</p><div className="plan-periods subscription-plan-cards">{[{id:'week',label:'1 WEEK',period:'MEMBERSHIP',code:'week',tone:'violet',badge:''},{id:'month',label:'1 MONTH',period:'MEMBERSHIP',code:'month',tone:'blue',badge:''},{id:'quarter',label:'3 MONTHS',period:'MEMBERSHIP',code:'three_months',tone:'gold',badge:'Save 15%'},{id:'half',label:'6 MONTHS',period:'MEMBERSHIP',code:'six_months',tone:'pink',badge:'Save 28%'},{id:'year',label:'1 YEAR',period:'MEMBERSHIP',code:'yearly',tone:'purple',badge:'Best Value'}].map(plan => { const price = subscriptionPrices.find(item => item.plan_code === plan.code); return <button key={plan.id} className={`plan-period subscription-plan-card ${plan.tone} ${selectedPlan===plan.id?'selected':''}`} onClick={() => { setSelectedPlan(plan.id); setPlanDetailsOpen(true); setCheckoutUrl(null); setPage('plan-detail'); }}><span className="subscription-card-icon">{plan.id==='year'?'♛':'▦'}</span>{plan.badge && <span className="subscription-card-badge">{plan.badge}</span>}<strong>{plan.label}</strong><small>{plan.period}</small><b>{price?.price_usd != null ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(price.price_usd)) : 'Price pending'}</b><small className="subscription-card-rand">{price?.price_zar != null ? '≈ '+new Intl.NumberFormat('en-ZA',{style:'currency',currency:'ZAR'}).format(Number(price.price_zar)) : 'Rand estimate pending'}</small><span className="subscription-card-choose">{selectedPlan===plan.id?'Selected ✓':'Select →'}</span></button>; })}</div><div className="subscription-trust-row" hidden><div><span>▢</span><strong>Secure Payments</strong><small>Your information is always safe.</small></div><div><span>✓</span><strong>Verified Members</strong><small>Real people, real profiles.</small></div><div><span>♥</span><strong>Premium Features</strong><small>Features for matching plans.</small></div><div><span>♛</span><strong>Your Dream Is Closer</strong><small>Join today and connect.</small></div></div><div className="subscription-payment-methods" hidden><strong>Pay with:</strong><span>♥ OneVoucher <small>(South Africa · ZAR)</small></span><i></i><span>₿ Cryptocurrency <small>(USD)</small></span></div><small className="subscription-rate-note">Prices are in USD. Rand equivalents are estimates and may vary with exchange rates.</small></div>{planDetailsOpen && <div className="subscription-modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setPlanDetailsOpen(false); }}><div className="plan-detail subscription-plan-detail subscription-detail-portal" id="selected-plan-details" role="dialog" aria-modal="true" aria-labelledby="subscription-detail-title"><div className="subscription-detail-heading"><div><span className="eyebrow">YOUR SELECTED MEMBERSHIP</span><h3 id="subscription-detail-title">{planLabelByCode[selectedPlanCode]}</h3></div><div className="portal-page-actions"><button type="button" onClick={() => { setPlanDetailsOpen(false); setCheckoutUrl(null); setPage('plans'); }}>← Back</button><button type="button" onClick={() => { setPlanDetailsOpen(false); setPage(session ? "discover" : "register"); }}>× Close</button></div></div><div><span className={selectedPrice?.enabled ? 'draft-label price-enabled-label' : 'draft-label'}>{selectedPrice?.enabled ? 'AVAILABLE FOR CHECKOUT' : 'NOT YET AVAILABLE'}</span><h3>{{week:'Per Week · 7 days',month:'Per Month',quarter:'3 Months',half:'6 Months',year:'1 Year · 12 months'}[selectedPlan]}</h3><div className="subscription-price-summary"><span>Subscription price</span><div className="subscription-price-display"><strong>{selectedPrice?.price_usd != null ? new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(Number(selectedPrice.price_usd)) : 'Price not set yet'}</strong>{selectedPrice?.price_zar != null && <small className="subscription-price-rand">Approximately {new Intl.NumberFormat('en-ZA', { style:'currency', currency:'ZAR' }).format(Number(selectedPrice.price_zar))}</small>}</div></div><p className="muted-copy">{selectedPrice?.enabled ? 'Prices are managed by the DateMe owner. The payment provider confirms payment before the subscription can activate.' : 'This plan cannot be purchased yet because its price has not been configured and enabled by the DateMe owner.'}</p><h4>Membership benefits</h4><ul><li>Build and update your dating profile.</li><li>Discover profiles and send likes.</li><li>Report and block inappropriate behaviour.</li><li>Ordinary text chat with your matches across subscription tiers, subject to the free daily limit.</li>{selectedPlan==='week' && <li>Premium features are available only when both matched members have the same active, verified tier.</li>}{selectedPlan==='month' && <li>Photo sharing when both matched members have this same active, verified tier.</li>}{selectedPlan==='quarter' && <li>Photo sharing when both matched members have this same active, verified tier.</li>}{selectedPlan==='half' && <><li>Photo and video sharing when both matched members have this same active, verified tier.</li><li>Voice features subject to same-tier access and rollout availability.</li></>}{selectedPlan==='year' && <><li>Photo and video sharing when both matched members have this same active, verified tier.</li><li>Voice features subject to same-tier access and rollout availability.</li><li>Access to the premium features enabled for this tier.</li></>}</ul>{session ? <div className="checkout-panel"><h4>Secure payment</h4><label>Payment method<select value={paymentProvider} onChange={(event) => { setPaymentProvider(event.target.value as 'nowpayments' | 'kora_1voucher'); setCheckoutUrl(null); }}><option value="kora_1voucher">OneVoucher · South African rand (ZAR)</option><option value="nowpayments">Cryptocurrency · US dollars (USD)</option></select></label>{paymentProvider === 'kora_1voucher' && <div className="voucher-fields"><label>16-digit OneVoucher PIN<input type="password" inputMode="numeric" autoComplete="off" maxLength={19} value={voucherPin} onChange={(event) => setVoucherPin(event.target.value.replace(/[^0-9 ]/g, '').slice(0,19))} placeholder="Enter voucher PIN" /></label><label>South African mobile number<input type="tel" inputMode="tel" autoComplete="tel" value={voucherPhone} onChange={(event) => setVoucherPhone(event.target.value)} placeholder="+27821234567" /></label><small>Your voucher PIN is sent only to the secure payment function and is cleared from this form after submission.</small></div>}{paymentProvider === 'nowpayments' && <div className="crypto-asset-panel"><strong>Crypto assets and wallet payment</strong><p>After you continue, the secure payment provider will show the supported coins and networks for this invoice, the exact crypto amount, wallet address and QR code. Select the asset there and send only the displayed amount on the matching network.</p><div className="crypto-asset-chips"><span>Bitcoin (BTC)</span><span>Ethereum (ETH)</span><span>Tether (USDT)</span><span>Other assets if supported</span></div><small>Available assets depend on the provider’s live invoice options. DateMe does not invent wallet addresses or ask you to send funds to a manually supplied address.</small></div>}<button className="button button-primary" type="button" onClick={() => void submitSubscriptionRequest()} disabled={checkoutBusy || !selectedPrice?.enabled || !selectedPaymentAmount}>{checkoutBusy ? 'Starting secure checkout…' : 'Continue to secure payment'}</button>{checkoutUrl && <a className="button button-outline checkout-open-link" href={checkoutUrl} target="_blank" rel="noopener noreferrer">Open secure checkout ↗</a>}</div> : <p>Sign in to purchase a subscription.</p>}<p className="payment-assurance">DateMe never activates paid features from a screenshot or an unverified return page. Only the payment provider’s verified notification can confirm a payment.</p><div className="subscription-trust-row"><div><span>▢</span><strong>Secure Payments</strong><small>Your information is always safe.</small></div><div><span>✓</span><strong>Verified Members</strong><small>Real people, real profiles.</small></div><div><span>♥</span><strong>Premium Features</strong><small>Features for matching plans.</small></div><div><span>♛</span><strong>Your Dream Is Closer</strong><small>Join today and connect.</small></div></div><div className="subscription-payment-methods"><strong>Payment methods:</strong><span>♥ OneVoucher <small>South Africa · ZAR</small></span><i></i><span>₿ Cryptocurrency <small>USD</small></span></div></div></div></div>}{session && <div className="admin-report-list member-payment-history"><div className="payment-history-heading"><h3>Your payment history</h3><button type="button" className="button button-outline" onClick={() => void refreshPaymentOrders()}>Refresh status</button></div>{myPaymentOrders.length === 0 ? <p>No payment orders yet.</p> : myPaymentOrders.map(order => <article className="admin-report" key={order.id}><div className="admin-report-heading"><strong>{planLabelByCode[order.plan_code] || order.plan_code} membership</strong><span className={'report-status ' + (order.status === 'succeeded' ? 'status-resolved' : order.status === 'failed' || order.status === 'expired' ? 'status-open' : 'status-reviewing')}>{order.status}</span></div><p>{new Intl.NumberFormat(order.currency === 'USD' ? 'en-US' : 'en-ZA', { style:'currency', currency:order.currency }).format(Number(order.amount))} · {order.provider === 'kora_1voucher' ? 'OneVoucher' : 'Cryptocurrency'}</p><small>{new Date(order.created_at).toLocaleString()}</small>{order.checkout_url && order.status === 'pending' && <a href={order.checkout_url} target="_blank" rel="noopener noreferrer">Continue payment ↗</a>}</article>)}</div>}</section>}
+        {page === 'features' && <MemberFeatures session={session} profile={myProfile} isAdmin={isAdmin} onNotice={setNotice} onClose={() => setPage('discover')} initialTab={featureSection} />}
+         {page === 'admin' && <section className="portal-page membership-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">OWNER ACCESS</span><h2>Administrator <span>portal.</span></h2>{isAdmin ? <div className="plan-detail"><h3>Admin access verified</h3><p>Signed in as {session?.user.email}. The secure admin area is reserved for accounts granted access in the database.</p><p>Review member reports, contact-sharing violations, strike history, and 24-hour suspensions below. Messages containing detected contact details are stored as asterisks for other members; the restricted safety log preserves the original message for administrator review.</p><div className="admin-report-list admin-member-directory"><h3>Member directory ({adminMembers.length})</h3><p>Search registered members and review their subscription verification at a glance. This directory is read-only; account or subscription changes must use approved admin workflows.</p><label className="admin-member-search">Search members<input value={adminMemberSearch} onChange={(event) => setAdminMemberSearch(event.target.value)} placeholder="Name, city or member ID…" /></label>{adminMembers.filter((member) => `${member.display_name} ${member.city || ''} ${member.id} ${member.plan_code} ${member.subscription_status}`.toLowerCase().includes(adminMemberSearch.toLowerCase())).map((member) => { const suspended = safetyStatus.find((item) => item.user_id === member.id && item.suspended_until && new Date(item.suspended_until).getTime() > Date.now()); const active = member.subscription_status === 'active' && member.payment_verified && member.ends_at && new Date(member.ends_at).getTime() > Date.now(); return <article className="admin-report admin-member-row" key={member.id}><div className="admin-report-heading"><strong>{member.display_name || 'Unnamed member'}{member.age ? ` · ${member.age}` : ''}</strong><span className={'report-status ' + (suspended ? 'status-open' : active ? 'status-resolved' : 'status-reviewing')}>{suspended ? 'Suspended' : active ? 'Verified active' : member.subscription_status === 'pending' ? 'Payment pending' : 'Free / inactive'}</span></div><p>{member.city || 'City not provided'} · Plan: {member.plan_code}</p><small>Member ID: {member.id}</small><small>Joined: {new Date(member.created_at).toLocaleDateString()}{member.ends_at ? ` · Expires: ${new Date(member.ends_at).toLocaleDateString()}` : ''}</small><div className="admin-report-actions"><button type="button" className="button button-outline" disabled={memberActionBusyId !== null} onClick={() => void setMemberSuspension(member.id, !suspended)}>{memberActionBusyId === member.id ? 'Saving…' : suspended ? 'Lift suspension' : 'Suspend 24 hours'}</button></div></article>; })}{adminMembers.length === 0 && <p>Loading registered members…</p>}</div><div className="admin-report-list admin-pricing-manager"><h3>Subscription pricing</h3><p>Set the live price for each period. Checkout remains disabled until the plan is enabled and has a valid price.</p>{[{code:'week',label:'1 week'},{code:'month',label:'1 month'},{code:'three_months',label:'3 months'},{code:'six_months',label:'6 months'},{code:'yearly',label:'1 year'}].map(plan => { const price = subscriptionPrices.find(item => item.plan_code === plan.code); if (!price) return <article className="admin-report" key={plan.code}><strong>{plan.label}</strong><p>Price record not found. Refresh the portal and try again.</p></article>; return <article className="admin-report admin-price-row" key={plan.code}><strong>{plan.label}</strong><div className="admin-price-fields"><label>Price in ZAR<input type="number" min="0.01" step="0.01" value={price.price_zar ?? ''} onChange={event => updateSubscriptionPrice(plan.code,{price_zar:event.target.value === '' ? null : Number(event.target.value)})} placeholder="e.g. 49.00" /></label><label>Price in USD<input type="number" min="0.01" step="0.01" value={price.price_usd ?? ''} onChange={event => updateSubscriptionPrice(plan.code,{price_usd:event.target.value === '' ? null : Number(event.target.value)})} placeholder="e.g. 3.00" /></label></div><label className="admin-price-enable"><input type="checkbox" checked={price.enabled} onChange={event => updateSubscriptionPrice(plan.code,{enabled:event.target.checked})} /> Enable checkout for this plan</label><button className="button button-outline" type="button" disabled={priceSavingPlan === plan.code} onClick={() => void saveSubscriptionPrice(plan.code)}>{priceSavingPlan === plan.code ? 'Saving…' : 'Save price settings'}</button></article>; })}</div><div className="admin-report-list"><h3>Subscription approval queue</h3>{adminSubscriptions.length === 0 ? <p>No pending subscription requests.</p> : adminSubscriptions.map(item => <article className="admin-report" key={item.user_id}><strong>Member: {item.user_id}</strong><p>Requested plan: {item.plan_code}</p><small>Requested: {new Date(item.created_at).toLocaleString()}</small><div className="admin-report-actions"><button onClick={() => void reviewSubscription(item.user_id, item.plan_code, true)}>Approve after payment verified</button><button onClick={() => void reviewSubscription(item.user_id, item.plan_code, false)}>Decline</button></div><p>Only approve after independently confirming the payment has been received.</p></article>)}</div><div className="admin-report-list admin-payment-orders"><div className="payment-history-heading"><h3>Payment transactions</h3><button type="button" className="button button-outline" onClick={() => void refreshAdminPaymentOrders()}>Refresh transactions</button></div><p>Provider-confirmed payments activate subscriptions automatically. Never activate a subscription based only on a screenshot or a member’s claim.</p>{adminPaymentOrders.length === 0 ? <p>No payment transactions yet.</p> : adminPaymentOrders.map(order => <article className="admin-report" key={order.id}><div className="admin-report-heading"><strong>{planLabelByCode[order.plan_code] || order.plan_code} membership</strong><span className={'report-status ' + (order.status === 'succeeded' ? 'status-resolved' : order.status === 'failed' || order.status === 'expired' ? 'status-open' : 'status-reviewing')}>{order.status}</span></div><p>Member: {order.user_id || 'Unknown'}</p><p>{new Intl.NumberFormat(order.currency === 'USD' ? 'en-US' : 'en-ZA', { style:'currency', currency:order.currency }).format(Number(order.amount))} · {order.provider === 'kora_1voucher' ? 'OneVoucher' : 'Cryptocurrency'}</p><small>Created: {new Date(order.created_at).toLocaleString()}{order.paid_at ? ` · Paid: ${new Date(order.paid_at).toLocaleString()}` : ''}</small>{order.checkout_url && order.status === 'pending' && <p><a href={order.checkout_url} target="_blank" rel="noopener noreferrer">Open provider checkout ↗</a></p>}</article>)}</div><div className="admin-report-list"><h3>Safety history &amp; suspensions</h3>{reportsLoading ? <p>Loading safety history…</p> : safetyEvents.length === 0 ? <p>No contact-sharing violations recorded.</p> : safetyEvents.map(item => <article className="admin-report" key={item.id}><div className="admin-report-heading"><strong>{item.action_taken === 'suspended_24h' ? '24-hour suspension applied' : 'Message redacted · warning issued'}</strong><span className={'report-status ' + (item.action_taken === 'suspended_24h' ? 'status-open' : 'status-reviewing')}>Strike {item.strike_number}</span></div><p><strong>Original message (admin only):</strong> {item.original_message}</p><p><strong>Detection reasons:</strong> {item.detected_reasons.join(', ')}</p><small>Member ID: {item.user_id} · {new Date(item.created_at).toLocaleString()}</small></article>)}<h3>Current safety status</h3>{safetyStatus.length === 0 ? <p>No safety status records yet.</p> : safetyStatus.map(item => <article className="admin-report" key={item.user_id}><strong>Member ID: {item.user_id}</strong><p>Recent strikes: {item.strike_count}</p><p>Suspended until: {item.suspended_until ? new Date(item.suspended_until).toLocaleString() : 'Not currently suspended'}</p><small>Last updated: {new Date(item.updated_at).toLocaleString()}</small></article>)}</div><div className="admin-report-list"><h3>Member safety reports</h3>{reportsLoading ? <p>Loading reports…</p> : adminReports.length === 0 ? <p>No reports have been submitted.</p> : adminReports.map(report => <article className="admin-report" key={report.id}><div className="admin-report-heading"><strong>{report.reason || 'Member report'}</strong><span className={'report-status status-' + report.status}>{report.status}</span></div><p>{report.details || 'No extra details provided.'}</p><small>Reported member: {report.reported_user_id} · Submitted: {new Date(report.created_at).toLocaleString()}</small><div className="admin-report-actions"><button onClick={() => void updateReportStatus(report.id, 'reviewing')}>Mark reviewing</button><button onClick={() => void updateReportStatus(report.id, 'resolved')}>Resolve</button><button onClick={() => void updateReportStatus(report.id, 'dismissed')}>Dismiss</button></div></article>)}</div></div> : <div className="plan-detail"><h3>Restricted access</h3><p>Your account has not been granted administrator privileges. For security, admin access cannot be self-assigned from this public page.</p><p>Create a separate owner account below. After you register and confirm its email, send me that email address only so the account can be granted administrator access securely. Do not send your password or verification codes. Admin accounts will be exempt from subscription charges once the owner role is provisioned.</p><div className="admin-report-actions"><button className="button button-primary" onClick={() => { setPage('register'); setMode('signup'); setNotice('Register the separate account you want to use as DateMe owner. After email confirmation, send the account email address only so owner access can be provisioned.'); window.scrollTo(0,0); }}>Register owner account</button><button className="button button-outline" onClick={() => { setPage('register'); setMode('signin'); setNotice('Sign in with your separate owner account. If it has not yet been granted administrator access, send its email address only.'); window.scrollTo(0,0); }}>Sign in to owner account</button></div></div>}</section>}
         {page === 'how' && <section className="portal-page how-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">NOT COMPLICATED. JUST HUMAN.</span><h2>Good things start <span>simply.</span></h2><div className="steps-grid"><article><span className="step-num">01</span><h3>Show up as you</h3><p>Create a profile that feels like you.</p></article><article><span className="step-num">02</span><h3>Find your people</h3><p>Discover people you would like to know.</p></article><article><span className="step-num">03</span><h3>Make the first move</h3><p>A kind hello can start a conversation.</p></article></div></section>}
         {page === 'safety' && <section className="portal-page how-section"><div className="portal-page-actions"><button onClick={() => setPage(session ? 'discover' : 'register')}>← Back</button><button onClick={() => setPage(session ? 'discover' : 'register')}>× Close</button></div><span className="eyebrow">ALWAYS YOUR CHOICE</span><h2>Safety <span>centre.</span></h2><p>Protect your personal details, take your time getting to know people, and meet in public places. Contact details are blocked for free members and for members on different subscription tiers; matched members on the same active, verified tier can exchange contact details. Repeated attempts to bypass restrictions may be blocked and trigger a temporary account freeze and safety review. Never send money to someone you have not met. Meet in public, tell a trusted person where you are going, and report or block anyone who makes you uncomfortable.</p></section>}
 
@@ -870,7 +1148,8 @@ export default function App() {
             <button type="button" className="focused-chat-nav" onClick={() => { setFocusedChatOnly(false); setDemoChatPerson(null); setDemoMessages([]); setNotice(''); }} aria-label="Back" title="Back">‹ <span>Back</span></button>
             <span className="match-avatar">{(demoChatPerson?.photo_url || activePerson?.photo_url) ? <img src={(demoChatPerson?.photo_url || activePerson?.photo_url) as string} alt="" /> : '♡'}</span>
             <div className="focused-chat-person"><strong>{demoChatPerson?.display_name || activePerson?.display_name || 'Your match'}{demoChatPerson ? ' · Demo' : ''}</strong><small>{demoChatPerson ? 'Simulated conversation' : 'Private conversation'}</small></div>
-            <button type="button" className="focused-chat-close" onClick={() => { setFocusedChatOnly(false); setDemoChatPerson(null); setDemoMessages([]); setActiveMatchId(''); setTab('discover'); setNotice(''); }} aria-label="Close conversation" title="Close">×</button>
+            {!demoChatPerson && activeMatch && session && videoCallRecipientId && <VideoCall session={session} matchId={activeMatch.id} recipientId={videoCallRecipientId} allowed={videoCallAllowed} onNotice={setNotice} />}
+             <button type="button" className="focused-chat-close" onClick={() => { setFocusedChatOnly(false); setDemoChatPerson(null); setDemoMessages([]); setActiveMatchId(''); setTab('discover'); setNotice(''); }} aria-label="Close conversation" title="Close">×</button>
           </header>
           <div className="focused-chat-messages">
             {(demoChatPerson ? demoMessages : messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id))).map((message) => <div key={message.id} className={message.sender_id === (demoChatPerson ? 'demo-you' : session?.user.id) ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" className="message-menu-trigger" title="Message options" aria-label="Message options" aria-expanded={openMessageMenuId === message.id} onClick={() => setOpenMessageMenuId((current) => current === message.id ? null : message.id)}>⋯</button>{openMessageMenuId === message.id && <div className="message-options-menu" role="menu"><button type="button" role="menuitem" onClick={() => replyToChatMessage(message)}>↶ Reply</button>{!message.audio_path && <button type="button" role="menuitem" onClick={() => void translateChatMessage(message)}>{translationBusyId === message.id ? '… Translating' : '文 Translate in DateMe'}</button>}{message.audio_path && <><button type="button" role="menuitem" onClick={() => playVoiceMessage(message)}>▶ Play voice note</button><button type="button" role="menuitem" onClick={() => downloadVoiceMessage(message)}>↓ Download voice note</button></>}<button type="button" role="menuitem" onClick={() => copyChatMessage(message)}>▢ Copy</button><button type="button" role="menuitem" onClick={() => deleteChatMessageForMe(message, Boolean(demoChatPerson))}>Delete for me</button>{(demoChatPerson || message.sender_id === session?.user.id) && <button type="button" role="menuitem" className="message-delete-action" onClick={() => void deleteChatMessageForEveryone(message, Boolean(demoChatPerson))}>Delete for everyone</button>}</div>}</div>{message.reply_to && !demoChatPerson && <p className="reply-reference">↶ {getReplyMessageBody(message.reply_to)}</p>}{message.audio_path && supabase ? <audio id={`voice-${message.id}`} className="message-audio-engine" preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}{translatedMessages[message.id] && <div className="message-translation"><label>Translated in DateMe <select aria-label="Translation language" value={translationLanguage} onChange={(e) => setTranslationLanguage(e.target.value)}><option value="en">English</option><option value="af">Afrikaans</option><option value="zu">isiZulu</option><option value="xh">isiXhosa</option><option value="st">Sesotho</option><option value="tn">Setswana</option><option value="nso">Sepedi</option><option value="fr">French</option><option value="es">Spanish</option><option value="pt">Portuguese</option><option value="de">German</option><option value="it">Italian</option><option value="sw">Swahili</option><option value="ar">Arabic</option><option value="zh-CN">Chinese</option><option value="hi">Hindi</option><option value="ja">Japanese</option><option value="ru">Russian</option><option value="nl">Dutch</option><option value="pl">Polish</option></select></label><p>{translatedMessages[message.id]}</p><button type="button" onClick={() => void translateChatMessage(message)}>Translate again</button></div>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div>)}
