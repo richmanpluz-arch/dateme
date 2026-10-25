@@ -72,6 +72,7 @@ export default function App() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [messageText, setMessageText] = useState('');
   const [demoChatPerson, setDemoChatPerson] = useState<Profile | null>(null);
   const [demoMessages, setDemoMessages] = useState<Message[]>([]);
@@ -528,6 +529,21 @@ export default function App() {
     const refreshTimer = window.setInterval(() => { void refreshUnreadCount(); }, 30000);
     return () => { cancelled = true; window.clearInterval(refreshTimer); void supabase!.removeChannel(channel); };
   }, [session?.user.id, matches.map((match) => match.id).join('|')]);
+
+  useEffect(() => {
+    if (!supabase || !session?.user.id) { setUnreadNotificationCount(0); return; }
+    let cancelled = false;
+    async function refreshNotificationCount() {
+      const { count, error } = await supabase!.from('member_notifications').select('id', { count: 'exact', head: true }).eq('user_id', session!.user.id).is('read_at', null);
+      if (!cancelled && !error) setUnreadNotificationCount(count || 0);
+    }
+    void refreshNotificationCount();
+    const channel = supabase.channel(`member-notification-badge-${session.user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'member_notifications', filter: `user_id=eq.${session.user.id}` }, () => { void refreshNotificationCount(); })
+      .subscribe();
+    const timer = window.setInterval(() => { void refreshNotificationCount(); }, 30000);
+    return () => { cancelled = true; window.clearInterval(timer); void supabase!.removeChannel(channel); };
+  }, [session?.user.id]);
 
   useEffect(() => {
     if (!supabase || !session?.user.id) {
@@ -1036,7 +1052,7 @@ export default function App() {
              <button onClick={() => { setFeatureSection('contacts'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Block contacts</button>
              <button onClick={() => { setFeatureSection('safety'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Safety reports and moderation</button>
              <button onClick={() => { setFeatureSection('notifications'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Notification settings</button>
-             <button onClick={() => { setFeatureSection('inbox'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Notification inbox</button>
+             <button onClick={() => { setFeatureSection('inbox'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Notification inbox{unreadNotificationCount > 0 ? ` (${unreadNotificationCount > 99 ? '99+' : unreadNotificationCount})` : ''}</button>
             {isAdmin && <button onClick={() => { setFeatureSection('reports'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Moderation reports</button>}
              <button onClick={() => { setPage('admin'); setMenuOpen(false); window.scrollTo(0,0); }}>Admin portal</button>
             <button onClick={() => { setTheme(theme === 'rose' ? 'navy' : theme === 'navy' ? 'green' : 'rose'); setMenuOpen(false); }}>Change theme: {theme === 'rose' ? 'Rose' : theme === 'navy' ? 'Navy' : 'Green'}</button>
