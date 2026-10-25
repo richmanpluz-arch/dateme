@@ -127,7 +127,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (session?.user) setPage('discover');
+    if (session?.user) setPage(localStorage.getItem('dateme-needs-verification') === session.user.id ? 'features' : 'discover');
     else setPage('register');
   }, [session?.user?.id]);
 
@@ -610,6 +610,7 @@ export default function App() {
         const { data, error } = await supabase!.auth.signUp({ email: email.trim(), password, options: { data: { display_name: displayName.trim(), age } } });
         if (error) throw error;
         if (data.user) {
+          localStorage.setItem('dateme-needs-verification', data.user.id);
           const { error: profileError } = await supabase!.from('profiles').upsert({ id: data.user.id, display_name: displayName.trim(), age, city: null, bio: null, photo_url: null }, { onConflict: 'id', ignoreDuplicates: true });
           if (profileError) setNotice('Your account was created, but your profile needs finishing in My profile.');
         }
