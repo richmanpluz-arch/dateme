@@ -724,7 +724,7 @@ export default function App() {
     const reason = window.prompt('Why are you reporting this member? (fake profile, harassment, scam, inappropriate content, other)');
     if (!reason?.trim()) return;
     const details = window.prompt('Optional details for the safety team (do not include passwords or financial information):') || '';
-    const { error } = await supabase!.from('member_reports').insert({ reporter_id: session.user.id, reported_user_id: profile.id, reason: reason.trim().slice(0, 120), details: details.trim().slice(0, 2000), status: 'open' });
+    const { error } = await supabase!.from('member_reports').insert({ reporter_id: session.user.id, reported_user_id: profile.id, reason: reason.trim().slice(0, 80), details: details.trim().slice(0, 1000), status: 'open' });
     setNotice(error ? 'Report could not be submitted. Please try again.' : 'Thank you. Your report has been sent for review.');
   }
 
