@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from './supabase';
 import MemberFeatures from './MemberFeatures';
+import VideoCall from './VideoCall';
 
 type Profile = {
   id: string;
@@ -85,6 +86,8 @@ export default function App() {
   const recorderChunksRef = useRef<BlobPart[]>([]);
   const [activeMatchId, setActiveMatchId] = useState('');
   const [focusedChatOnly, setFocusedChatOnly] = useState(false);
+  const [videoCallAllowed, setVideoCallAllowed] = useState(false);
+  const [videoCallRecipientId, setVideoCallRecipientId] = useState('');
   const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
   const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
   const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
@@ -582,6 +585,21 @@ export default function App() {
     return () => { cancelled = true; };
   }, [messages, session?.user.id]);
   const activePerson = activeMatch ? profiles.find((profile) => profile.id === (activeMatch.user_one === session?.user.id ? activeMatch.user_two : activeMatch.user_one)) : null;
+
+  useEffect(() => {
+    if (!supabase || !session || !activeMatchId) { setVideoCallAllowed(false); setVideoCallRecipientId(''); return; }
+    const match = matches.find((item) => item.id === activeMatchId);
+    if (!match) return;
+    const otherId = match.user_one === session.user.id ? match.user_two : match.user_one;
+    setVideoCallRecipientId(otherId);
+    let cancelled = false;
+    supabase.from('member_subscriptions').select('user_id,plan_code,status,payment_verified,ends_at').in('user_id', [session.user.id, otherId]).then(({ data }) => {
+      if (cancelled) return;
+      const valid = Boolean(data && data.length === 2 && data.every((item) => item.plan_code === 'yearly' && item.status === 'active' && item.payment_verified && item.ends_at && new Date(item.ends_at).getTime() > Date.now()));
+      setVideoCallAllowed(valid);
+    });
+    return () => { cancelled = true; };
+  }, [session?.user.id, activeMatchId, matches]);
 
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setNotice('');
@@ -1095,7 +1113,7 @@ export default function App() {
             <button type="button" className="focused-chat-nav" onClick={() => { setFocusedChatOnly(false); setDemoChatPerson(null); setDemoMessages([]); setNotice(''); }} aria-label="Back" title="Back">‹ <span>Back</span></button>
             <span className="match-avatar">{(demoChatPerson?.photo_url || activePerson?.photo_url) ? <img src={(demoChatPerson?.photo_url || activePerson?.photo_url) as string} alt="" /> : '♡'}</span>
             <div className="focused-chat-person"><strong>{demoChatPerson?.display_name || activePerson?.display_name || 'Your match'}{demoChatPerson ? ' · Demo' : ''}</strong><small>{demoChatPerson ? 'Simulated conversation' : 'Private conversation'}</small></div>
-            <button type="button" className="focused-chat-close" onClick={() => { setFocusedChatOnly(false); setDemoChatPerson(null); setDemoMessages([]); setActiveMatchId(''); setTab('discover'); setNotice(''); }} aria-label="Close conversation" title="Close">×</button>
+            {!demoChatPerson && activeMatch && session && videoCallRecipientId && <VideoCall session={session} matchId={activeMatch.id} recipientId={videoCallRecipientId} allowed={videoCallAllowed} onNotice={setNotice} />}\n             <button type="button" className="focused-chat-close" onClick={() => { setFocusedChatOnly(false); setDemoChatPerson(null); setDemoMessages([]); setActiveMatchId(''); setTab('discover'); setNotice(''); }} aria-label="Close conversation" title="Close">×</button>
           </header>
           <div className="focused-chat-messages">
             {(demoChatPerson ? demoMessages : messages.filter((m) => (!m.expires_at || new Date(m.expires_at).getTime() > Date.now()) && !hiddenMessageIds.includes(m.id))).map((message) => <div key={message.id} className={message.sender_id === (demoChatPerson ? 'demo-you' : session?.user.id) ? 'message-bubble mine' : 'message-bubble'}><div className="message-actions"><button type="button" className="message-menu-trigger" title="Message options" aria-label="Message options" aria-expanded={openMessageMenuId === message.id} onClick={() => setOpenMessageMenuId((current) => current === message.id ? null : message.id)}>⋯</button>{openMessageMenuId === message.id && <div className="message-options-menu" role="menu"><button type="button" role="menuitem" onClick={() => replyToChatMessage(message)}>↶ Reply</button>{!message.audio_path && <button type="button" role="menuitem" onClick={() => void translateChatMessage(message)}>{translationBusyId === message.id ? '… Translating' : '文 Translate in DateMe'}</button>}{message.audio_path && <><button type="button" role="menuitem" onClick={() => playVoiceMessage(message)}>▶ Play voice note</button><button type="button" role="menuitem" onClick={() => downloadVoiceMessage(message)}>↓ Download voice note</button></>}<button type="button" role="menuitem" onClick={() => copyChatMessage(message)}>▢ Copy</button><button type="button" role="menuitem" onClick={() => deleteChatMessageForMe(message, Boolean(demoChatPerson))}>Delete for me</button>{(demoChatPerson || message.sender_id === session?.user.id) && <button type="button" role="menuitem" className="message-delete-action" onClick={() => void deleteChatMessageForEveryone(message, Boolean(demoChatPerson))}>Delete for everyone</button>}</div>}</div>{message.reply_to && !demoChatPerson && <p className="reply-reference">↶ {getReplyMessageBody(message.reply_to)}</p>}{message.audio_path && supabase ? <audio id={`voice-${message.id}`} className="message-audio-engine" preload="none" src={voiceUrls[message.id] || undefined} /> : <p>{message.body}</p>}{translatedMessages[message.id] && <div className="message-translation"><label>Translated in DateMe <select aria-label="Translation language" value={translationLanguage} onChange={(e) => setTranslationLanguage(e.target.value)}><option value="en">English</option><option value="af">Afrikaans</option><option value="zu">isiZulu</option><option value="xh">isiXhosa</option><option value="st">Sesotho</option><option value="tn">Setswana</option><option value="nso">Sepedi</option><option value="fr">French</option><option value="es">Spanish</option><option value="pt">Portuguese</option><option value="de">German</option><option value="it">Italian</option><option value="sw">Swahili</option><option value="ar">Arabic</option><option value="zh-CN">Chinese</option><option value="hi">Hindi</option><option value="ja">Japanese</option><option value="ru">Russian</option><option value="nl">Dutch</option><option value="pl">Polish</option></select></label><p>{translatedMessages[message.id]}</p><button type="button" onClick={() => void translateChatMessage(message)}>Translate again</button></div>}<time>{new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div>)}
