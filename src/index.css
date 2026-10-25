@@ -672,3 +672,6 @@ body:has(.subscription-modal-backdrop) { overflow:hidden!important; }
 .compact-superlike-button:hover { background:var(--green); color:white; }
 
 .feature-notification-unread { border-left:3px solid var(--gold); padding-left:12px; background:rgba(0,107,79,.12); }
+
+/* Keep route-specific hidden sections out of layout even when component styles set display. */
+[hidden] { display: none !important; }
