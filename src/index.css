@@ -433,3 +433,39 @@ body:has(.focused-chat-overlay) { overflow:hidden; }
   .chat-limit-banner { align-items:stretch; }
   .chat-limit-banner .button { width:100%; }
 }
+
+
+/* Subscription checkout and owner pricing console */
+.subscription-price-summary { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:18px 0 10px; padding:16px 18px; border:1px solid var(--gold); border-radius:14px; background:linear-gradient(125deg,#102b43,#071a2c); }
+.subscription-price-summary span { color:var(--muted); font-size:.9rem; }
+.subscription-price-summary strong { color:var(--gold); font-family:'Playfair Display',serif; font-size:clamp(1.4rem,3vw,2rem); }
+.price-enabled-label { color:#b2f0d7 !important; border-color:#168663 !important; }
+.checkout-panel { display:flex; flex-direction:column; gap:13px; margin:22px 0 12px; padding:18px; border:1px solid var(--line); border-radius:16px; background:rgba(5,20,34,.68); }
+.checkout-panel h4 { margin:0; }
+.checkout-panel label, .voucher-fields label { display:flex; flex-direction:column; gap:7px; color:var(--cream); font-size:.87rem; }
+.checkout-panel select, .checkout-panel input, .admin-price-fields input { width:100%; min-height:44px; padding:10px 12px; border:1px solid #48637a; border-radius:10px; background:#071a2c; color:var(--cream); }
+.voucher-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.voucher-fields small { grid-column:1/-1; color:var(--muted); line-height:1.5; }
+.checkout-open-link { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
+.payment-assurance { padding:12px 14px; border-left:3px solid var(--gold); background:rgba(216,182,106,.08); color:var(--muted); font-size:.83rem; line-height:1.55; }
+.member-payment-history { margin-top:24px; }
+.member-payment-history .admin-report a, .admin-payment-orders .admin-report a { display:inline-block; margin-top:8px; color:#f0d58c; }
+.admin-pricing-manager > p, .admin-payment-orders > p { color:var(--muted); line-height:1.55; }
+.admin-price-row { display:flex; flex-direction:column; gap:12px; }
+.admin-price-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; width:100%; }
+.admin-price-fields label { display:flex; flex-direction:column; gap:6px; color:var(--muted); font-size:.83rem; }
+.admin-price-enable { display:flex; align-items:center; gap:9px; color:var(--cream); font-size:.86rem; }
+.admin-price-enable input { width:18px; height:18px; accent-color:var(--green); }
+.admin-price-row .button { align-self:flex-start; }
+.current-subscription-status { padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:rgba(10,36,56,.55); }
+@media (max-width:560px) {
+  .checkout-panel { padding:13px; }
+  .voucher-fields, .admin-price-fields { grid-template-columns:1fr; }
+  .subscription-price-summary { align-items:flex-start; flex-direction:column; gap:6px; }
+  .admin-price-row .button { width:100%; }
+}
+@media (orientation:landscape) and (max-height:600px) {
+  .checkout-panel { gap:9px; padding:12px; }
+  .voucher-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .subscription-price-summary { padding:10px 14px; margin:10px 0; }
+}
