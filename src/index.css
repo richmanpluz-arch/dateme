@@ -577,3 +577,12 @@ body:has(.focused-chat-overlay) { overflow:hidden; }
 .subscription-detail-portal .subscription-payment-methods { margin-top:10px; }
 .subscription-modal-backdrop .subscription-detail-portal button:focus-visible,.subscription-modal-backdrop .subscription-detail-portal a:focus-visible { outline:2px solid #f45fc5; outline-offset:3px; }
 @media (max-width:600px) { .subscription-modal-backdrop { padding:8px; align-items:flex-start; } .subscription-detail-portal { max-height:calc(100dvh - 16px); border-radius:15px!important; } .subscription-detail-portal .subscription-trust-row { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+
+/* The selected membership is a separate full-screen page, not an inline expansion */
+.subscription-modal-backdrop { position:fixed!important; inset:0!important; z-index:2147483000!important; display:block!important; padding:0!important; margin:0!important; width:100vw!important; height:100dvh!important; max-height:100dvh!important; overflow:hidden!important; background:#080b22!important; backdrop-filter:none!important; }
+.subscription-detail-portal { box-sizing:border-box!important; width:100%!important; max-width:none!important; height:100dvh!important; max-height:100dvh!important; min-height:100dvh!important; overflow-y:auto!important; margin:0!important; padding:clamp(16px,3vw,34px) clamp(14px,5vw,64px) 40px!important; border:0!important; border-radius:0!important; background:radial-gradient(ellipse at 80% 0%,rgba(232,66,178,.13),transparent 34%),linear-gradient(145deg,#11102f,#080b22 65%,#100a2d)!important; box-shadow:none!important; }
+.subscription-detail-portal .subscription-detail-heading { top:0!important; padding:12px 0 16px!important; }
+.subscription-detail-portal .subscription-detail-heading .portal-page-actions button { min-width:100px; }
+body:has(.subscription-modal-backdrop) { overflow:hidden!important; }
+@media (max-width:600px) { .subscription-modal-backdrop { padding:0!important; align-items:stretch!important; } .subscription-detail-portal { width:100%!important; height:100dvh!important; max-height:100dvh!important; padding:12px 14px 28px!important; border-radius:0!important; } }
