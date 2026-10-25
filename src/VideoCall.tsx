@@ -74,6 +74,7 @@ export default function VideoCall({session,matchId,recipientId,allowed,onNotice}
       if(!alive||error||!data)return;
       for(const raw of [...(data as SignalRow[])].reverse()){
         if(processed.current.has(raw.id))continue;
+        if(Date.now()-new Date(raw.created_at).getTime()>120000){processed.current.add(raw.id);continue;}
         if(raw.signal_type==='ice'&&raw.recipient_id===session.user.id&&!peer.current)continue;
         processed.current.add(raw.id);
         if(raw.sender_id===session.user.id)continue;
