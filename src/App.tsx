@@ -241,8 +241,8 @@ export default function App() {
       return;
     }
     if (paymentProvider === 'kora_1voucher') {
-      if (!/^\\d{16}$/.test(voucherPin.replace(/\\s/g, ''))) { setNotice('Enter the 16-digit OneVoucher PIN.'); return; }
-      if (!/^\\+27\\d{9}$/.test(voucherPhone.trim())) { setNotice('Enter a South African mobile number in +27 format.'); return; }
+      if (!/^\d{16}$/.test(voucherPin.replace(/\s/g, ''))) { setNotice('Enter the 16-digit OneVoucher PIN.'); return; }
+      if (!/^\+27\d{9}$/.test(voucherPhone.trim())) { setNotice('Enter a South African mobile number in +27 format.'); return; }
     }
     setCheckoutBusy(true);
     setCheckoutUrl(null);
@@ -252,7 +252,7 @@ export default function App() {
         plan_code: selectedPlanCode,
         provider: paymentProvider,
         idempotency_key: crypto.randomUUID(),
-        ...(paymentProvider === 'kora_1voucher' ? { voucher_pin: voucherPin.replace(/\\s/g, ''), phone_number: voucherPhone.trim() } : {}),
+        ...(paymentProvider === 'kora_1voucher' ? { voucher_pin: voucherPin.replace(/\s/g, ''), phone_number: voucherPhone.trim() } : {}),
       },
     });
     setCheckoutBusy(false);
