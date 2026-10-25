@@ -1066,7 +1066,7 @@ export default function App() {
               <button className="button button-primary submit-button" type="submit" disabled={busy || checkingSession}>{busy ? 'Please wait…' : mode === 'signup' ? 'Create my account' : mode === 'forgot' ? 'Send reset link' : 'Log in'} <span>→</span></button>
               {mode === 'signin' && <button className="forgot-password" type="button" onClick={() => { setMode('forgot'); setNotice(''); }}>Forgot password?</button>}
               {mode === 'forgot' && <button className="forgot-password" type="button" onClick={() => { setMode('signin'); setNotice(''); }}>Back to log in</button>}</>
-              <p className="terms">By continuing, you agree to treat people with kindness and respect.</p>
+              <p className="terms">By continuing, you agree to treat people with kindness and respect.</p>{mode === 'signup' && <p className="verification-onboarding-note">After creating your account, DateMe will ask you to upload your profile photo and record a short live selfie video for identity review. Your verification stays pending until an authorized reviewer checks it.</p>}
             </form>
             {notice && <p className="notice" role="status">{notice}</p>}
             {!isSupabaseConfigured && <p className="setup-hint"><span>ⓘ</span> Preview mode: add your Supabase keys to enable real accounts.</p>}
