@@ -17,6 +17,8 @@ type Profile = {
 };
 type Match = { id: string; user_one: string; user_two: string; created_at: string };
 type Message = { id: string; match_id: string; sender_id: string; body: string; created_at: string; expires_at?: string; reply_to?: string | null; audio_path?: string | null; demo?: boolean };
+type SubscriptionPrice = { plan_code: string; price_zar: number | null; price_usd: number | null; enabled: boolean };
+type PaymentOrder = { id: string; user_id?: string; plan_code: string; provider: string; status: string; amount: number; currency: string; checkout_url: string | null; created_at: string; paid_at?: string | null };
 
 const aiProfiles: Profile[] = [
   { id: 'ai-sarah', display_name: 'Sarah', age: 27, city: 'Johannesburg', bio: 'Coffee lover, weekend explorer and fan of honest conversations.', photo_url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=85', interests: ['Coffee','Travel','Music'] },
@@ -103,6 +105,15 @@ export default function App() {
   const [dailyChatsUsed, setDailyChatsUsed] = useState(0);
   const [dailyChatLimitReached, setDailyChatLimitReached] = useState(false);
   const [adminSubscriptions, setAdminSubscriptions] = useState<Array<{ user_id: string; plan_code: string; status: string; created_at: string; payment_verified: boolean }>>([]);
+  const [subscriptionPrices, setSubscriptionPrices] = useState<SubscriptionPrice[]>([]);
+  const [priceSavingPlan, setPriceSavingPlan] = useState<string | null>(null);
+  const [paymentProvider, setPaymentProvider] = useState<'nowpayments' | 'kora_1voucher'>('kora_1voucher');
+  const [voucherPin, setVoucherPin] = useState('');
+  const [voucherPhone, setVoucherPhone] = useState('');
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [myPaymentOrders, setMyPaymentOrders] = useState<PaymentOrder[]>([]);
+  const [adminPaymentOrders, setAdminPaymentOrders] = useState<PaymentOrder[]>([]);
   const referralCodeFromUrl = new URLSearchParams(window.location.search).get('ref');
 
   useEffect(() => {
@@ -191,7 +202,9 @@ export default function App() {
       supabase!.from('member_safety_events').select('id, user_id, original_message, detected_reasons, strike_number, action_taken, created_at').order('created_at', { ascending: false }).limit(200),
       supabase!.from('member_safety_status').select('user_id, strike_count, suspended_until, updated_at').order('updated_at', { ascending: false }).limit(200),
       supabase!.from('member_subscriptions').select('user_id,plan_code,status,created_at,payment_verified').eq('status','pending').order('created_at',{ascending:false}).limit(200),
-    ]).then(([reports, events, statuses, subscriptions]) => {
+      supabase!.from('subscription_payment_orders').select('id,user_id,plan_code,provider,status,amount,currency,checkout_url,created_at,paid_at').order('created_at',{ascending:false}).limit(100),
+      supabase!.from('subscription_plan_prices').select('plan_code,price_zar,price_usd,enabled').order('plan_code'),
+    ]).then(([reports, events, statuses, subscriptions, paymentOrders, prices]) => {
       if (cancelled) return;
       if (reports.error) setNotice('Could not load reports. Please check administrator policies.');
       else setAdminReports((reports.data || []) as typeof adminReports);
@@ -200,19 +213,94 @@ export default function App() {
       if (statuses.error) setNotice('Safety status could not be loaded. Check administrator policies.');
       else setSafetyStatus((statuses.data || []) as typeof safetyStatus);
       if (!subscriptions.error) setAdminSubscriptions((subscriptions.data || []) as typeof adminSubscriptions);
+      if (!paymentOrders.error) setAdminPaymentOrders((paymentOrders.data || []) as PaymentOrder[]);
+      if (!prices.error) setSubscriptionPrices((prices.data || []) as SubscriptionPrice[]);
       setReportsLoading(false);
     });
     return () => { cancelled = true; };
   }, [session?.user?.id, isAdmin, page]);
 
+  const planCodeBySelection: Record<string, string> = { week: 'week', month: 'month', quarter: 'three_months', half: 'six_months', year: 'yearly' };
+  const planLabelByCode: Record<string, string> = { week: '1 week', month: '1 month', three_months: '3 months', six_months: '6 months', yearly: '1 year' };
+  const selectedPlanCode = planCodeBySelection[selectedPlan] || 'week';
+  const selectedPrice = subscriptionPrices.find((item) => item.plan_code === selectedPlanCode);
+  const selectedPaymentAmount = paymentProvider === 'nowpayments' ? selectedPrice?.price_usd : selectedPrice?.price_zar;
+
+  async function refreshPaymentOrders() {
+    if (!supabase || !session) { setMyPaymentOrders([]); return; }
+    const { data, error } = await supabase!.from('subscription_payment_orders')
+      .select('id,plan_code,provider,status,amount,currency,checkout_url,created_at,paid_at')
+      .eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(10);
+    if (!error) setMyPaymentOrders((data || []) as PaymentOrder[]);
+  }
+
+  async function startSubscriptionCheckout() {
+    if (!supabase || !session) { setNotice('Sign in before purchasing a subscription.'); return; }
+    if (!selectedPrice?.enabled || !selectedPaymentAmount || Number(selectedPaymentAmount) <= 0) {
+      setNotice('This plan is not available for payment yet. The DateMe owner must set a price and enable it first.');
+      return;
+    }
+    if (paymentProvider === 'kora_1voucher') {
+      if (!/^\\d{16}$/.test(voucherPin.replace(/\\s/g, ''))) { setNotice('Enter the 16-digit OneVoucher PIN.'); return; }
+      if (!/^\\+27\\d{9}$/.test(voucherPhone.trim())) { setNotice('Enter a South African mobile number in +27 format.'); return; }
+    }
+    setCheckoutBusy(true);
+    setCheckoutUrl(null);
+    setNotice('Starting secure checkout…');
+    const { data, error } = await supabase!.functions.invoke('create-subscription-payment', {
+      body: {
+        plan_code: selectedPlanCode,
+        provider: paymentProvider,
+        idempotency_key: crypto.randomUUID(),
+        ...(paymentProvider === 'kora_1voucher' ? { voucher_pin: voucherPin.replace(/\\s/g, ''), phone_number: voucherPhone.trim() } : {}),
+      },
+    });
+    setCheckoutBusy(false);
+    setVoucherPin('');
+    if (error) {
+      const providerMessage = (data as { error?: string } | null)?.error;
+      setNotice(providerMessage || error.message || 'Could not start checkout. Please try again.');
+      return;
+    }
+    const result = data as { order_id?: string; checkout_url?: string; status?: string; message?: string; error?: string } | null;
+    if (result?.error) { setNotice(result.error); return; }
+    if (result?.checkout_url) {
+      setCheckoutUrl(result.checkout_url);
+      setNotice('Your secure checkout is ready. Open it below to complete payment. Your subscription activates only after the provider confirms payment.');
+    } else {
+      setNotice(result?.message || 'Payment started. Your subscription will unlock only after the payment provider confirms it.');
+    }
+    await refreshPaymentOrders();
+  }
+
+  async function saveSubscriptionPrice(planCode: string) {
+    if (!supabase || !session || !isAdmin) return;
+    const item = subscriptionPrices.find((price) => price.plan_code === planCode);
+    if (!item) return;
+    const zar = item.price_zar === null || String(item.price_zar).trim() === '' ? null : Number(item.price_zar);
+    const usd = item.price_usd === null || String(item.price_usd).trim() === '' ? null : Number(item.price_usd);
+    if ((zar !== null && (!Number.isFinite(zar) || zar <= 0)) || (usd !== null && (!Number.isFinite(usd) || usd <= 0))) {
+      setNotice('Prices must be positive numbers. Leave a currency blank if it is not ready.');
+      return;
+    }
+    if (item.enabled && zar === null && usd === null) { setNotice('Set at least one price before enabling this plan.'); return; }
+    setPriceSavingPlan(planCode);
+    const { error } = await supabase!.from('subscription_plan_prices').upsert({
+      plan_code: planCode, price_zar: zar, price_usd: usd, enabled: item.enabled,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'plan_code' });
+    setPriceSavingPlan(null);
+    if (error) { setNotice('Could not save this plan price. Confirm administrator permissions.'); return; }
+    setSubscriptionPrices(current => current.map(price => price.plan_code === planCode ? { ...price, price_zar: zar, price_usd: usd } : price));
+    setNotice(`${planLabelByCode[planCode] || planCode} pricing saved${item.enabled ? ' and enabled for checkout' : ' (checkout remains disabled)'}.`);
+  }
+
+  function updateSubscriptionPrice(planCode: string, patch: Partial<SubscriptionPrice>) {
+    setSubscriptionPrices(current => current.map(price => price.plan_code === planCode ? { ...price, ...patch } : price));
+  }
+
   async function submitSubscriptionRequest() {
-    if (!supabase || !session) { setNotice('Sign in before requesting a subscription.'); return; }
-    const planMap: Record<string, string> = { week: 'week', month: 'month', quarter: 'three_months', half: 'six_months', year: 'yearly' };
-    const { error } = await supabase!.rpc('request_subscription_plan', { p_plan_code: planMap[selectedPlan] || 'week' });
-    if (error) { setNotice('Could not submit your plan request. Please try again.'); return; }
-    setNotice('Subscription request submitted. Your plan stays locked until payment is verified and an administrator approves it.');
-    const { data } = await supabase!.from('member_subscriptions').select('plan_code,status,ends_at,payment_verified,promo_chat_until').eq('user_id', session.user.id).maybeSingle();
-    if (data) setSubscriptionInfo(data as typeof subscriptionInfo);
+    await startSubscriptionCheckout();
   }
 
   async function reviewSubscription(userId: string, planCode: string, approve: boolean) {
@@ -230,6 +318,36 @@ export default function App() {
     setAdminReports(current => current.map(report => report.id === reportId ? { ...report, status } : report));
     setNotice('Report marked ' + status + '.');
   }
+
+  useEffect(() => {
+    if (!supabase || !session?.user.id) { setMyPaymentOrders([]); return; }
+    void refreshPaymentOrders();
+  }, [session?.user.id]);
+
+  useEffect(() => {
+    if (!supabase || (page !== 'plans' && page !== 'admin')) return;
+    let cancelled = false;
+    async function loadSubscriptionPrices() {
+      if (page === 'admin' && isAdmin) {
+        const { data, error } = await supabase!.from('subscription_plan_prices').select('plan_code,price_zar,price_usd,enabled').order('plan_code');
+        if (!cancelled && !error) setSubscriptionPrices((data || []) as SubscriptionPrice[]);
+        return;
+      }
+      const { data, error } = await supabase!.functions.invoke('subscription-pricing', { method: 'GET' });
+      if (!cancelled && !error) setSubscriptionPrices(((data as { plans?: SubscriptionPrice[] } | null)?.plans || []) as SubscriptionPrice[]);
+    }
+    void loadSubscriptionPrices();
+    return () => { cancelled = true; };
+  }, [page, isAdmin]);
+
+  useEffect(() => {
+    const paymentReturn = new URLSearchParams(window.location.search).get('payment');
+    if (!paymentReturn) return;
+    setNotice(paymentReturn === 'return' ? 'You returned from checkout. We are waiting for verified payment confirmation; refresh your subscription status shortly.' : 'Checkout was cancelled. Your subscription has not changed.');
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('payment');
+    window.history.replaceState({}, '', cleanUrl.toString());
+  }, []);
 
   useEffect(() => {
     if (!supabase) { setCheckingSession(false); return; }
