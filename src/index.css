@@ -670,3 +670,5 @@ body:has(.subscription-modal-backdrop) { overflow:hidden!important; }
 .portal-menu { max-height: calc(100dvh - 110px); overflow-y: auto; overscroll-behavior: contain; }
 .compact-superlike-button { display:grid; place-items:center; width:34px; height:34px; border:1px solid var(--gold); border-radius:50%; color:var(--gold); background:#102b43; font-size:1.1rem; }
 .compact-superlike-button:hover { background:var(--green); color:white; }
+
+.feature-notification-unread { border-left:3px solid var(--gold); padding-left:12px; background:rgba(0,107,79,.12); }
