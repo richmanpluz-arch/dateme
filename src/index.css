@@ -653,3 +653,16 @@ body:has(.subscription-modal-backdrop) { overflow:hidden!important; }
 .feature-support-message.mine { justify-self:end; background:#075c47; }
 .feature-support-message p { margin:5px 0 0; color:var(--cream); white-space:pre-wrap; }
 @media(max-width:720px) { .feature-support-layout { grid-template-columns:1fr; } .feature-support-threads { max-height:180px; overflow:auto; } }
+
+.video-call-widget { display:flex; align-items:center; }
+.incoming-call-banner { display:flex; flex-wrap:wrap; align-items:center; gap:7px; padding:8px; border:1px solid var(--gold); border-radius:10px; background:var(--navy-2); }
+.incoming-call-banner span { color:var(--cream); font-size:.78rem; }
+.video-call-overlay { position:fixed; inset:0; z-index:2147483640; display:grid; place-items:center; padding:14px; background:rgba(0,5,12,.94); }
+.video-call-window { position:relative; width:min(100%,900px); min-height:300px; padding:16px; border:1px solid var(--gold); border-radius:18px; background:#071728; box-shadow:0 20px 70px #000b; }
+.video-call-title { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; margin-bottom:12px; }
+.video-call-title span, .video-call-window small { color:var(--muted); font-size:.78rem; }
+.video-call-remote { display:block; width:100%; height:min(60vh,520px); min-height:220px; object-fit:cover; border-radius:12px; background:#02070d; }
+.video-call-local { position:absolute; right:28px; top:62px; width:min(26%,190px); max-height:190px; aspect-ratio:3/4; object-fit:cover; border:1px solid var(--gold); border-radius:12px; background:#0b2035; }
+.video-call-actions { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 8px; }
+@media(max-width:600px) { .video-call-window { padding:10px; } .video-call-remote { height:52vh; min-height:180px; } .video-call-local { top:54px; right:18px; width:29%; max-height:120px; } .video-call-actions .button { flex:1; padding:10px 8px; } }
+@media(orientation:landscape) and (max-height:600px) { .video-call-window { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 14px; min-height:0; max-height:94dvh; overflow:auto; } .video-call-title { grid-column:1/-1; margin-bottom:0; } .video-call-remote { height:48dvh; min-height:140px; } .video-call-local { top:48px; right:26%; width:17%; max-height:100px; } .video-call-actions { display:grid; align-content:center; } .video-call-window small { grid-column:1/-1; } }
