@@ -54,7 +54,7 @@ export default function App() {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signup');
   const [showPassword, setShowPassword] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [page, setPage] = useState<'register' | 'home' | 'discover' | 'plans' | 'plan-detail' | 'features' | 'how' | 'safety' | 'admin'>('register');
+  const [page, setPage] = useState<'register' | 'home' | 'portals' | 'discover' | 'plans' | 'plan-detail' | 'features' | 'how' | 'safety' | 'admin'>('register');
   const [featureSection, setFeatureSection] = useState('verification');
   const [selectedPlan, setSelectedPlan] = useState('week');
   const [theme, setTheme] = useState<'rose' | 'navy' | 'green'>('navy');
@@ -135,7 +135,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (session?.user) setPage(localStorage.getItem('dateme-needs-verification') === session.user.id ? 'features' : 'discover');
+    if (session?.user) setPage(localStorage.getItem('dateme-needs-verification') === session.user.id ? 'features' : 'portals');
     else setPage('register');
   }, [session?.user?.id]);
 
@@ -1035,6 +1035,7 @@ export default function App() {
           <button className="brand-logo brand-logo-small logo-home-button" onClick={() => { setPage(session ? "discover" : "register"); setMenuOpen(false); window.scrollTo(0,0); }} aria-label="DateMe home"><DateMeLogo /></button>
           <button className="portal-toggle" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><span></span><span></span><span></span></button>
           {menuOpen && <nav className="portal-menu" aria-label="DateMe portals">
+            <button className="portal-menu-featured" onClick={() => { setPage(session ? 'portals' : 'register'); setMenuOpen(false); window.scrollTo({top:0,behavior:'smooth'}); }}>✦ All DateMe Portals</button>
             <button onClick={() => { setPage(session ? 'discover' : 'register'); setMenuOpen(false); window.scrollTo({top:0,behavior:'smooth'}); }}>Main page</button>
             <button onClick={() => { setPage(session ? 'discover' : 'register'); setMenuOpen(false); window.scrollTo(0,0); }}>Discover / member portal</button>
             <button onClick={() => { setPage('plans'); setMenuOpen(false); window.scrollTo(0,0); }}>Subscription plans</button>
@@ -1059,10 +1060,44 @@ export default function App() {
             {!session && <button onClick={() => { setPage('register'); setMenuOpen(false); window.scrollTo({top:0,behavior:'smooth'}); }}>Register / sign in</button>}
           </nav>}
         </div>
-        <nav className="top-links" aria-label="Main navigation"><button onClick={() => { setPage("how"); setMenuOpen(false); window.scrollTo(0,0); }}>How it works</button><button onClick={() => { setPage("safety"); setMenuOpen(false); window.scrollTo(0,0); }}>Your safety</button>{session && <button onClick={() => { setPage("plans"); setMenuOpen(false); window.scrollTo(0,0); }}>Membership</button>}</nav>
+        <nav className="top-links" aria-label="Main navigation">{session && <button className="top-portal-link" onClick={() => { setPage('portals'); setMenuOpen(false); window.scrollTo(0,0); }}>All Portals</button>}<button onClick={() => { setPage("how"); setMenuOpen(false); window.scrollTo(0,0); }}>How it works</button><button onClick={() => { setPage("safety"); setMenuOpen(false); window.scrollTo(0,0); }}>Your safety</button>{session && <button onClick={() => { setPage("plans"); setMenuOpen(false); window.scrollTo(0,0); }}>Membership</button>}</nav>
         {session ? <button className="button button-outline top-action" onClick={() => void handleSignOut()}>Sign out</button> : <button className="button button-outline top-action" onClick={() => { setPage(session ? 'discover' : 'register'); setMode('signin'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Log in</button>}
       </header>
       <main>
+        {page === 'portals' && session && <section className="portal-hub">
+          <div className="portal-hub-heading">
+            <div><span className="eyebrow">DATEME MEMBER SPACE</span><h1>Your DateMe <span>portals</span></h1><p>Choose a portal to open its own screen. Each card takes you directly to that feature.</p></div>
+            <div className="portal-hub-mark" aria-hidden="true">♡</div>
+          </div>
+          <div className="portal-hub-grid">
+            {[
+              { n: 1, icon: '✦', title: 'Subscriptions & Payments', desc: 'Plans, checkout, payment status and history', action: () => setPage('plans'), color: 'gold' },
+              { n: 2, icon: '♧', title: 'Notifications & History', desc: 'Your notification inbox and unread updates', action: () => { setFeatureSection('inbox'); setPage('features'); }, color: 'green' },
+              { n: 3, icon: '♙', title: 'Owner Admin Portal', desc: 'Members, subscriptions, pricing and transactions', action: () => setPage('admin'), color: 'red' },
+              { n: 4, icon: '✉', title: 'Admin Support Chat', desc: 'Send and review text-only support messages', action: () => { setFeatureSection('support'); setPage('features'); }, color: 'green' },
+              { n: 5, icon: '⚑', title: 'Safety & Reporting', desc: 'Report members and review safety concerns', action: () => { setFeatureSection(isAdmin ? 'reports' : 'safety'); setPage('features'); }, color: 'red' },
+              { n: 6, icon: '◎', title: 'Facial Verification', desc: 'Submit identity photos and live selfie video', action: () => { setFeatureSection('verification'); setPage('features'); }, color: 'gold' },
+              { n: 7, icon: '♫', title: 'Voice Introduction', desc: 'Manage your optional voice profile', action: () => { setFeatureSection('voice'); setPage('features'); }, color: 'green' },
+              { n: 8, icon: '♡', title: 'Compatibility Quiz', desc: 'Your preferences and relationship values', action: () => { setFeatureSection('quiz'); setPage('features'); }, color: 'red' },
+              { n: 9, icon: '★', title: 'Super Likes & Coins', desc: 'Explore Super Likes and coin features', action: () => { setFeatureSection('coins'); setPage('features'); }, color: 'gold' },
+              { n: 10, icon: '↗', title: 'Profile Boosts', desc: 'Boost options and activation status', action: () => { setFeatureSection('boosts'); setPage('features'); }, color: 'red' },
+              { n: 11, icon: '♥', title: 'Who Liked You', desc: 'Likes and subscription-gated access', action: () => { setPage('discover'); setTab('likes'); }, color: 'red' },
+              { n: 12, icon: '⌖', title: 'Location Discovery', desc: 'Nearby profiles and distance filters', action: () => { setPage('discover'); void showNearbyProfiles(); }, color: 'green' },
+              { n: 13, icon: '⚑', title: 'Events & Groups', desc: 'Explore event and group features', action: () => { setFeatureSection('events'); setPage('features'); }, color: 'gold' },
+              { n: 14, icon: '☻', title: 'Icebreakers', desc: 'Conversation starters for a first hello', action: () => { setFeatureSection('icebreakers'); setPage('features'); }, color: 'green' },
+              { n: 15, icon: '◉', title: 'My Profile', desc: 'Photos, bio, interests and profile details', action: () => { setPage('discover'); setTab('profile'); }, color: 'gold' },
+              { n: 16, icon: '盾', title: 'Content Moderation', desc: 'Safety rules and moderation information', action: () => { setFeatureSection('safety'); setPage('features'); }, color: 'red' },
+              { n: 17, icon: '⊘', title: 'Block Contacts', desc: 'Privacy-preserving contact blocking', action: () => { setFeatureSection('contacts'); setPage('features'); }, color: 'green' },
+              { n: 18, icon: '♧', title: 'Nearby Notifications', desc: 'Notification preferences and inbox', action: () => { setFeatureSection('notifications'); setPage('features'); }, color: 'gold' },
+              { n: 19, icon: '▣', title: 'Video Calling', desc: 'Call access and subscription eligibility', action: () => { setPage('discover'); setTab('matches'); }, color: 'green' },
+              { n: 20, icon: '⚒', title: 'Admin & Moderator Tools', desc: 'Verification review, reports and member actions', action: () => { setPage('admin'); }, color: 'red' }
+            ].map((portal) => <button type="button" className={`portal-hub-card portal-accent-${portal.color}`} key={portal.n} onClick={portal.action}>
+              <span className="portal-hub-card-top"><span className="portal-hub-icon">{portal.icon}</span><span className="portal-hub-number">PORTAL {String(portal.n).padStart(2, '0')}</span></span>
+              <strong>{portal.title}</strong><span className="portal-hub-description">{portal.desc}</span><span className="portal-hub-open">Open portal <b>↗</b></span>
+            </button>)}
+          </div>
+          <div className="portal-hub-footer"><span>♧ Private, member-first spaces</span><button className="button button-outline" onClick={() => { setPage('discover'); setTab('discover'); }}>← Back to Discover</button></div>
+        </section>}
         {page === 'register' && !session && <section className="hero registration-page">
           <div className="hero-copy">
             <span className="eyebrow"><span className="sparkle">✦</span> LESS SWIPING. MORE SPARK.</span>
