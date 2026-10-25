@@ -120,7 +120,7 @@ export default function App() {
   const [subscriptionPrices, setSubscriptionPrices] = useState<SubscriptionPrice[]>([]);
   const [priceSavingPlan, setPriceSavingPlan] = useState<string | null>(null);
   const [paymentProvider, setPaymentProvider] = useState<'nowpayments' | 'kora_1voucher'>('kora_1voucher');
-  const [planDetailsOpen, setPlanDetailsOpen] = useState(false);
+  const [, setPlanDetailsOpen] = useState(false);
   const [voucherPin, setVoucherPin] = useState('');
   const [voucherPhone, setVoucherPhone] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
