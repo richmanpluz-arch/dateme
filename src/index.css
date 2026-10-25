@@ -666,3 +666,7 @@ body:has(.subscription-modal-backdrop) { overflow:hidden!important; }
 .video-call-actions { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 8px; }
 @media(max-width:600px) { .video-call-window { padding:10px; } .video-call-remote { height:52vh; min-height:180px; } .video-call-local { top:54px; right:18px; width:29%; max-height:120px; } .video-call-actions .button { flex:1; padding:10px 8px; } }
 @media(orientation:landscape) and (max-height:600px) { .video-call-window { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 14px; min-height:0; max-height:94dvh; overflow:auto; } .video-call-title { grid-column:1/-1; margin-bottom:0; } .video-call-remote { height:48dvh; min-height:140px; } .video-call-local { top:48px; right:26%; width:17%; max-height:100px; } .video-call-actions { display:grid; align-content:center; } .video-call-window small { grid-column:1/-1; } }
+
+.portal-menu { max-height: calc(100dvh - 110px); overflow-y: auto; overscroll-behavior: contain; }
+.compact-superlike-button { display:grid; place-items:center; width:34px; height:34px; border:1px solid var(--gold); border-radius:50%; color:var(--gold); background:#102b43; font-size:1.1rem; }
+.compact-superlike-button:hover { background:var(--green); color:white; }
