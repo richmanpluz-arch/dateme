@@ -548,3 +548,19 @@ body:has(.focused-chat-overlay) { overflow:hidden; }
 @media (max-width:850px) { .subscription-plan-cards { grid-template-columns:repeat(3,minmax(0,1fr)); } .subscription-plan-card { min-height:250px; } .subscription-trust-row { grid-template-columns:repeat(2,minmax(0,1fr)); } .subscription-trust-row > div:nth-child(2) { border-right:0; } }
 @media (max-width:520px) { .subscription-showcase { padding:13px; border-radius:16px; } .subscription-plan-cards { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; } .subscription-plan-card { min-height:240px; padding:15px 7px 10px; } .subscription-plan-card:last-child { grid-column:1/-1; } .subscription-plan-card > b { font-size:1.55rem; } .subscription-trust-row { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; padding:10px 4px; } .subscription-trust-row > div { padding:6px 4px; grid-template-columns:25px 1fr; } .subscription-trust-row > div:nth-child(odd) { border-right:1px solid #39385f; } .subscription-trust-row > div:nth-child(even) { border-right:0; } .subscription-payment-methods { gap:10px; font-size:.75rem; } }
 @media (orientation:landscape) and (max-height:600px) { .subscription-plan-card { min-height:205px; padding:10px 6px; gap:5px; } .subscription-plan-card > b { font-size:1.25rem; } .subscription-trust-row { margin-top:12px; padding:8px; } .subscription-showcase-tagline { margin:10px 0 12px; } }
+
+
+/* Selected-plan portal, crypto asset disclosure, and visible navigation controls */
+.subscription-plan-detail { margin-top:18px; border:1px solid rgba(197,142,255,.35); border-radius:18px; background:linear-gradient(145deg,#11102f,#0a1029); padding:clamp(14px,2vw,24px); }
+.subscription-detail-heading { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+.subscription-detail-heading h3 { margin:4px 0 0; color:#fff; font-size:clamp(1.25rem,2.5vw,1.8rem); }
+.subscription-detail-heading .portal-page-actions { display:flex; gap:8px; }
+.subscription-detail-heading .portal-page-actions button,.portal-page-actions button { min-height:42px; padding:9px 15px; border:1px solid #8b76bd; border-radius:999px; color:#fff; background:#171338; font:inherit; font-weight:750; cursor:pointer; }
+.subscription-detail-heading .portal-page-actions button:hover,.portal-page-actions button:hover { border-color:#f45fc5; background:#2a174b; }
+.crypto-asset-panel { display:flex; flex-direction:column; gap:9px; padding:14px; border:1px solid #6450a0; border-radius:13px; background:rgba(105,71,174,.13); }
+.crypto-asset-panel strong { color:#fff; }
+.crypto-asset-panel p { margin:0; color:#d9d5f4; font-size:.88rem; line-height:1.55; }
+.crypto-asset-panel small { color:#b9b4da; font-size:.76rem; line-height:1.5; }
+.crypto-asset-chips { display:flex; flex-wrap:wrap; gap:7px; }
+.crypto-asset-chips span { padding:7px 10px; border:1px solid #7563b0; border-radius:999px; color:#fff; background:#171338; font-size:.78rem; font-weight:750; }
+@media (max-width:560px) { .subscription-detail-heading { align-items:stretch; flex-direction:column; } .subscription-detail-heading .portal-page-actions { display:grid; grid-template-columns:1fr 1fr; } .subscription-detail-heading .portal-page-actions button { width:100%; } }
