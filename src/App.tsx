@@ -1034,9 +1034,11 @@ export default function App() {
              <button onClick={() => { setFeatureSection('events'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Events and groups</button>
              <button onClick={() => { setFeatureSection('icebreakers'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Icebreakers</button>
              <button onClick={() => { setFeatureSection('contacts'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Block contacts</button>
+             <button onClick={() => { setFeatureSection('safety'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Safety reports and moderation</button>
              <button onClick={() => { setFeatureSection('notifications'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Notification settings</button>
              <button onClick={() => { setFeatureSection('inbox'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Notification inbox</button>
-            <button onClick={() => { setPage('admin'); setMenuOpen(false); window.scrollTo(0,0); }}>Admin portal</button>
+            {isAdmin && <button onClick={() => { setFeatureSection('reports'); setPage('features'); setMenuOpen(false); window.scrollTo(0,0); }}>Moderation reports</button>}
+             <button onClick={() => { setPage('admin'); setMenuOpen(false); window.scrollTo(0,0); }}>Admin portal</button>
             <button onClick={() => { setTheme(theme === 'rose' ? 'navy' : theme === 'navy' ? 'green' : 'rose'); setMenuOpen(false); }}>Change theme: {theme === 'rose' ? 'Rose' : theme === 'navy' ? 'Navy' : 'Green'}</button>
             {!session && <button onClick={() => { setPage('register'); setMenuOpen(false); window.scrollTo({top:0,behavior:'smooth'}); }}>Register / sign in</button>}
           </nav>}
