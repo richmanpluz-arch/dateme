@@ -12,6 +12,7 @@ export default function VideoCall({session,matchId,recipientId,allowed,onNotice}
   const localVideo=useRef<HTMLVideoElement|null>(null);
   const remoteVideo=useRef<HTMLVideoElement|null>(null);
   const peer=useRef<RTCPeerConnection|null>(null);
+  const localStreamRef=useRef<MediaStream|null>(null);
   const processed=useRef<Set<string>>(new Set());
   const active=useRef(false);
 
@@ -28,6 +29,7 @@ export default function VideoCall({session,matchId,recipientId,allowed,onNotice}
   async function getMedia() {
     if(!navigator.mediaDevices?.getUserMedia)throw new Error('Camera and microphone are not supported.');
     const media=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+    localStreamRef.current=media;
     setLocalStream(media);
     return media;
   }
@@ -58,7 +60,7 @@ export default function VideoCall({session,matchId,recipientId,allowed,onNotice}
   async function endCall(notifyOther=true) {
     if(notifyOther&&supabase&&active.current)await supabase.from('member_call_signals').insert({match_id:matchId,sender_id:session.user.id,recipient_id:recipientId,signal_type:'hangup',payload:{}});
     active.current=false;peer.current?.close();peer.current=null;
-    localStream?.getTracks().forEach(track=>track.stop());setLocalStream(null);setRemoteStream(null);setIncoming(null);setOpen(false);setCallStatus('Ready');
+    localStreamRef.current?.getTracks().forEach(track=>track.stop());localStreamRef.current=null;setLocalStream(null);setRemoteStream(null);setIncoming(null);setOpen(false);setCallStatus('Ready');
   }
   async function declineCall() {
     if(supabase&&incoming)await supabase.from('member_call_signals').insert({match_id:matchId,sender_id:session.user.id,recipient_id:incoming.sender_id,signal_type:'decline',payload:{}});
@@ -84,7 +86,7 @@ export default function VideoCall({session,matchId,recipientId,allowed,onNotice}
     void poll();const timer=window.setInterval(()=>void poll(),1500);
     return()=>{alive=false;window.clearInterval(timer);};
   },[session.user.id,matchId,recipientId]);
-  useEffect(()=>()=>{peer.current?.close();localStream?.getTracks().forEach(track=>track.stop());},[]);
+  useEffect(()=>()=>{peer.current?.close();localStreamRef.current?.getTracks().forEach(track=>track.stop());localStreamRef.current=null;},[]);
   if(!allowed&&!open&&!incoming)return <button type="button" className="chat-tool-button" onClick={()=>onNotice('Video calling requires both matched members to have the same active, verified one-year subscription.')}>Video call · 1 year plan</button>;
   return <div className="video-call-widget">
     {!open&&!incoming&&<button type="button" className="chat-tool-button" onClick={()=>void startCall()}>Video call</button>}
