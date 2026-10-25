@@ -496,3 +496,4 @@ body:has(.focused-chat-overlay) { overflow:hidden; }
 .subscription-price-display strong { line-height:1.15; }
 .subscription-price-rand { color:var(--muted); font-size:.78rem; font-weight:500; }
 @media (max-width:560px) { .subscription-price-display { align-items:flex-start; text-align:left; } }
+.plan-savings { color:var(--gold)!important; font-weight:700; letter-spacing:.01em; }
