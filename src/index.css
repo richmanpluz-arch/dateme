@@ -491,3 +491,8 @@ body:has(.focused-chat-overlay) { overflow:hidden; }
 .admin-member-search input { width:100%; min-height:42px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:rgba(10,36,56,.7); color:var(--cream); font:inherit; }
 .admin-member-row { gap:7px; }
 .admin-member-row small { overflow-wrap:anywhere; }
+
+.subscription-price-display { display:flex; flex-direction:column; align-items:flex-end; gap:3px; text-align:right; }
+.subscription-price-display strong { line-height:1.15; }
+.subscription-price-rand { color:var(--muted); font-size:.78rem; font-weight:500; }
+@media (max-width:560px) { .subscription-price-display { align-items:flex-start; text-align:left; } }
