@@ -68,6 +68,7 @@ export default function App() {
   const [liked, setLiked] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('dateme-ai-likes') || '[]') as string[]; } catch { return []; } });
   const [matches, setMatches] = useState<Match[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [messageText, setMessageText] = useState('');
   const [demoChatPerson, setDemoChatPerson] = useState<Profile | null>(null);
   const [demoMessages, setDemoMessages] = useState<Message[]>([]);
@@ -429,7 +430,17 @@ export default function App() {
       await supabase!.from('messages').delete().eq('match_id', activeMatchId).lt('expires_at', new Date().toISOString());
       if (cancelled) return;
       if (error) setNotice('Could not load this conversation.');
-      else setMessages((data || []) as Message[]);
+      else {
+        const loadedMessages = (data || []) as Message[];
+        setMessages(loadedMessages);
+        const incomingIds = loadedMessages.filter((message) => message.sender_id !== session!.user.id && (!message.expires_at || new Date(message.expires_at).getTime() > Date.now())).map((message) => message.id);
+        if (incomingIds.length) {
+          const readAt = new Date().toISOString();
+          const receipts = incomingIds.map((message_id) => ({ message_id, user_id: session!.user.id, delivered_at: readAt, read_at: readAt }));
+          const { error: receiptError } = await supabase!.from('message_receipts').upsert(receipts, { onConflict: 'message_id,user_id' });
+          if (receiptError) console.warn('Could not update message read receipts.', receiptError.message);
+        }
+      }
     }
     void loadMessages();
     const channel = supabase!.channel(`messages-${activeMatchId}`)
@@ -443,6 +454,30 @@ export default function App() {
 
   const activeMatch = matches.find((match) => match.id === activeMatchId) || null;
   const hasActivePaidSubscription = Boolean(subscriptionInfo && subscriptionInfo.plan_code !== 'free' && subscriptionInfo.status === 'active' && subscriptionInfo.payment_verified && subscriptionInfo.ends_at && new Date(subscriptionInfo.ends_at).getTime() > Date.now());
+
+  useEffect(() => {
+    if (!supabase || !session?.user.id || matches.length === 0) { setUnreadMessageCount(0); return; }
+    let cancelled = false;
+    const matchIds = matches.map((match) => match.id);
+    async function refreshUnreadCount() {
+      const [messageResult, receiptResult] = await Promise.all([
+        supabase!.from('messages').select('id, sender_id, expires_at').in('match_id', matchIds),
+        supabase!.from('message_receipts').select('message_id, read_at').eq('user_id', session!.user.id),
+      ]);
+      if (cancelled) return;
+      if (messageResult.error || receiptResult.error) return;
+      const readAtByMessage = new Map((receiptResult.data || []).map((receipt) => [receipt.message_id, receipt.read_at]));
+      const now = Date.now();
+      const unread = (messageResult.data || []).filter((message) => message.sender_id !== session!.user.id && (!message.expires_at || new Date(message.expires_at).getTime() > now) && !readAtByMessage.get(message.id)).length;
+      setUnreadMessageCount(unread);
+    }
+    void refreshUnreadCount();
+    const channel = supabase.channel(`message-notifications-${session.user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { void refreshUnreadCount(); })
+      .subscribe();
+    const refreshTimer = window.setInterval(() => { void refreshUnreadCount(); }, 30000);
+    return () => { cancelled = true; window.clearInterval(refreshTimer); void supabase!.removeChannel(channel); };
+  }, [session?.user.id, matches.map((match) => match.id).join('|')]);
 
   useEffect(() => {
     if (!supabase || !session?.user.id) {
@@ -774,6 +809,7 @@ export default function App() {
       setDemoMessages(current => [...current, mine]);
       setMessageText('');
       setReplyTo(null);
+      setShowEmojiPicker(false);
       setOpenMessageMenuId(null);
       const count = demoReplyCount + 1;
       setDemoReplyCount(count);
@@ -938,6 +974,7 @@ export default function App() {
             <button className={tab === 'discover' ? 'selected' : ''} onClick={() => { setTab('discover'); setActiveMatchId(''); }}>Discover</button>
             <button className={tab === 'likes' ? 'selected' : ''} onClick={() => { setTab('likes'); setActiveMatchId(''); }}>Likes ({incomingLikeCount})</button>
             <button className={tab === 'matches' ? 'selected' : ''} onClick={() => setTab('matches')}>Matches ({matches.length})</button>
+            <button className="inbox-notification-button" onClick={() => { setTab('matches'); setActiveMatchId(''); setNotice(unreadMessageCount ? `You have ${unreadMessageCount} unread message${unreadMessageCount === 1 ? '' : 's'}. Open a match to read them.` : 'You are all caught up.'); }} aria-label={`Inbox, ${unreadMessageCount} unread messages`}>Inbox {unreadMessageCount > 0 && <span className="unread-message-badge">{unreadMessageCount > 99 ? '99+' : unreadMessageCount}</span>}</button>
             <button className={tab === 'profile' ? 'selected' : ''} onClick={() => { setTab('profile'); setActiveMatchId(''); }}>My profile</button>
           </div></div>}
 
