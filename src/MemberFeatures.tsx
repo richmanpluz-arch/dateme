@@ -7,8 +7,9 @@ type Verification = { id:string; user_id:string; profile_photo_path:string; live
 const icebreakers = ['What is a small thing that always makes your day better?','What would your ideal first date look like?','What song instantly improves your mood?','What is something you would love to learn this year?','Coffee, a walk, or a museum for a first date?','What is a place you hope to visit one day?'];
 const defaults = { religion:'', wants_children:'', smoking:'', relationship_goal:'', preferred_distance_km:10, travel_mode:false, hometown:'' };
 
-export default function MemberFeatures({session,profile,isAdmin,onNotice,onProfileUpdated,onClose}:{session:Session|null;profile:Profile|null;isAdmin:boolean;onNotice:(message:string)=>void;onProfileUpdated?:()=>void;onClose?:()=>void}) {
-  const [tab,setTab]=useState('verification');
+export default function MemberFeatures({session,profile,isAdmin,onNotice,onProfileUpdated,onClose,initialTab}:{session:Session|null;profile:Profile|null;isAdmin:boolean;onNotice:(message:string)=>void;onProfileUpdated?:()=>void;onClose?:()=>void;initialTab?:string}) {
+  const [tab,setTab]=useState(initialTab||'verification');
+  useEffect(()=>{if(initialTab)setTab(initialTab);},[initialTab]);
   const [verification,setVerification]=useState<Verification|null>(null);
   const [photo,setPhoto]=useState<File|null>(null);
   const [videoBlob,setVideoBlob]=useState<Blob|null>(null);
