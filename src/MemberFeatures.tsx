@@ -58,7 +58,7 @@ export default function MemberFeatures({session,profile,isAdmin,onNotice,onProfi
       if(results[6].data)setAttending(results[6].data.filter((x:any)=>x.status!=='cancelled').map((x:any)=>x.event_id));
       if(results[7].data)setNotify((x)=>({...x,...results[7].data}));
       if(results[8].data)setLocation((x)=>({...x,...results[8].data}));
-      if(isAdmin){const q=await supabase.from('member_verification_submissions').select('id,user_id,profile_photo_path,live_video_path,status,review_note,submitted_at').in('status',['pending','rejected']).order('submitted_at').limit(100);if(alive&&!q.error)setQueue((q.data||[]) as Verification[]);}
+      if(isAdmin){const q=await supabase!.from('member_verification_submissions').select('id,user_id,profile_photo_path,live_video_path,status,review_note,submitted_at').in('status',['pending','rejected']).order('submitted_at').limit(100);if(alive&&!q.error)setQueue((q.data||[]) as Verification[]);}
     });
     return()=>{alive=false;stream.current?.getTracks().forEach(t=>t.stop());};
   },[session?.user.id,isAdmin]);
