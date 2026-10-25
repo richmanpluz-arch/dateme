@@ -564,3 +564,16 @@ body:has(.focused-chat-overlay) { overflow:hidden; }
 .crypto-asset-chips { display:flex; flex-wrap:wrap; gap:7px; }
 .crypto-asset-chips span { padding:7px 10px; border:1px solid #7563b0; border-radius:999px; color:#fff; background:#171338; font-size:.78rem; font-weight:750; }
 @media (max-width:560px) { .subscription-detail-heading { align-items:stretch; flex-direction:column; } .subscription-detail-heading .portal-page-actions { display:grid; grid-template-columns:1fr 1fr; } .subscription-detail-heading .portal-page-actions button { width:100%; } }
+
+
+/* Keep the plans page uncluttered; selection opens one focused portal */
+.subscription-modal-backdrop { position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center; padding:clamp(10px,3vw,28px); background:rgba(3,4,20,.82); backdrop-filter:blur(9px); overflow-y:auto; }
+.subscription-detail-portal { width:min(850px,100%); max-height:calc(100dvh - 32px); overflow-y:auto; margin:0!important; padding:clamp(15px,3vw,28px)!important; border:1px solid rgba(213,150,255,.6)!important; border-radius:22px!important; box-shadow:0 22px 90px #000b,0 0 35px #a044e52b; }
+.subscription-detail-portal .subscription-detail-heading { position:sticky; top:-1px; z-index:2; padding:8px 0 12px; background:linear-gradient(145deg,#11102f,#0a1029); border-bottom:1px solid #34305e; }
+.subscription-detail-portal .subscription-detail-heading h3 { text-transform:capitalize; }
+.subscription-detail-portal .subscription-price-summary { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 14px; border-radius:12px; background:#ffffff0c; }
+.subscription-detail-portal .checkout-panel { margin-top:16px; padding:15px; border:1px solid #51447e; border-radius:14px; background:#090b22; }
+.subscription-detail-portal .subscription-trust-row { margin-top:16px; }
+.subscription-detail-portal .subscription-payment-methods { margin-top:10px; }
+.subscription-modal-backdrop .subscription-detail-portal button:focus-visible,.subscription-modal-backdrop .subscription-detail-portal a:focus-visible { outline:2px solid #f45fc5; outline-offset:3px; }
+@media (max-width:600px) { .subscription-modal-backdrop { padding:8px; align-items:flex-start; } .subscription-detail-portal { max-height:calc(100dvh - 16px); border-radius:15px!important; } .subscription-detail-portal .subscription-trust-row { grid-template-columns:repeat(2,minmax(0,1fr)); } }
