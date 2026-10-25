@@ -95,6 +95,9 @@ export default function App() {
   const [translationLanguage, setTranslationLanguage] = useState('en');
   const [tab, setTab] = useState<'discover' | 'likes' | 'matches' | 'profile'>('discover');
   const [searchText, setSearchText] = useState('');
+  const [nearbyOnly, setNearbyOnly] = useState(false);
+  const [nearbyProfiles, setNearbyProfiles] = useState<Profile[]>([]);
+  const [nearbyRadius, setNearbyRadius] = useState(10);
   const [blockedIds, setBlockedIds] = useState<string[]>([]);
   const [adminReports, setAdminReports] = useState<Array<{ id: string; reporter_id: string; reported_user_id: string; reason: string; details: string | null; status: string; created_at: string }>>([]);
   const [reportsLoading, setReportsLoading] = useState(false);
@@ -566,8 +569,8 @@ export default function App() {
   }, [session?.user.id]);
 
   const visibleProfiles = useMemo(
-    () => (tab === 'likes' ? (hasActivePaidSubscription ? incomingLikes : []) : profiles).filter((profile) => !blockedIds.includes(profile.id) && (profile.display_name + ' ' + (profile.city || '') + ' ' + (profile.bio || '') + ' ' + (profile.interests || []).join(' ')).toLowerCase().includes(searchText.toLowerCase())),
-    [profiles, incomingLikes, hasActivePaidSubscription, tab, blockedIds, searchText],
+    () => (tab === 'likes' ? (hasActivePaidSubscription ? incomingLikes : []) : nearbyOnly && tab === 'discover' ? nearbyProfiles : profiles).filter((profile) => !blockedIds.includes(profile.id) && (profile.display_name + ' ' + (profile.city || '') + ' ' + (profile.bio || '') + ' ' + (profile.interests || []).join(' ')).toLowerCase().includes(searchText.toLowerCase())),
+    [profiles, incomingLikes, nearbyProfiles, nearbyOnly, hasActivePaidSubscription, tab, blockedIds, searchText],
   );
 
   useEffect(() => {
@@ -648,6 +651,17 @@ export default function App() {
     const { error } = await supabase!.auth.signOut();
     setNotice(error ? error.message : 'You have signed out.');
     setTab('discover'); setActiveMatchId('');
+  }
+
+  async function showNearbyProfiles() {
+    if (!supabase || !session) { setNotice('Sign in to use nearby discovery.'); return; }
+    const prefs = await supabase.from('member_location_preferences').select('max_distance_km,latitude,longitude').eq('user_id', session.user.id).maybeSingle();
+    if (prefs.error || prefs.data?.latitude == null || prefs.data?.longitude == null) { setNotice('Open More member features → Location discovery, grant approximate location permission, and save your preferences first.'); setPage('features'); return; }
+    const radius = [5,10,50].includes(Number(prefs.data.max_distance_km)) ? Number(prefs.data.max_distance_km) : 10;
+    const result = await supabase.rpc('get_nearby_profiles', { p_max_distance_km: radius });
+    if (result.error) { setNotice('Nearby discovery could not load. Check location consent and database setup.'); return; }
+    setNearbyRadius(radius); setNearbyProfiles((result.data || []) as Profile[]); setNearbyOnly(true); setTab('discover'); setActiveMatchId('');
+    setNotice((result.data || []).length ? 'Showing members who opted in to nearby discovery within ' + radius + ' km.' : 'No opted-in members were found within ' + radius + ' km.');
   }
 
   async function handleLike(profile: Profile) {
@@ -1043,7 +1057,8 @@ export default function App() {
           <div className="section-heading"><div><span className="eyebrow">GOOD PEOPLE, REAL POSSIBILITIES</span><h2>{session ? tab === 'matches' ? 'Your connections' : tab === 'profile' ? 'Your story, your way' : tab === 'likes' ? 'People who liked you' : 'People you might like' : 'A little closer to your person'}</h2><p>{tab === 'likes' ? 'Your likes are private until your subscription unlocks them.' : 'Start with a smile. See where a conversation takes you.'}</p></div><span className="section-flower" aria-hidden="true">✳</span></div>
           {session && <div className="discover-search"><span>⌕</span><input aria-label="Search members" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search by name, city or interests…" /><button type="button" onClick={() => setSearchText('')}>Clear</button></div>}
           {session && <div className="member-bar"><span>Signed in as <strong>{session.user.email}</strong></span><div className="member-tabs">
-            <button className={tab === 'discover' ? 'selected' : ''} onClick={() => { setTab('discover'); setActiveMatchId(''); }}>Discover</button>
+            <button className={tab === 'discover' && !nearbyOnly ? 'selected' : ''} onClick={() => { setTab('discover'); setNearbyOnly(false); setActiveMatchId(''); }}>Discover</button>
+            <button className={nearbyOnly ? 'selected' : ''} onClick={() => void showNearbyProfiles()}>Near me ({nearbyRadius} km)</button>
             <button className={tab === 'likes' ? 'selected' : ''} onClick={() => { setTab('likes'); setActiveMatchId(''); }}>Likes ({incomingLikeCount})</button>
             <button className={tab === 'matches' ? 'selected' : ''} onClick={() => setTab('matches')}>Matches ({matches.length})</button>
             <button className="inbox-notification-button" onClick={() => { setTab('matches'); setActiveMatchId(''); setNotice(unreadMessageCount ? `You have ${unreadMessageCount} unread message${unreadMessageCount === 1 ? '' : 's'}. Open a match to read them.` : 'You are all caught up.'); }} aria-label={`Inbox, ${unreadMessageCount} unread messages`}>Inbox {unreadMessageCount > 0 && <span className="unread-message-badge">{unreadMessageCount > 99 ? '99+' : unreadMessageCount}</span>}</button>
