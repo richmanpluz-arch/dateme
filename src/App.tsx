@@ -126,6 +126,7 @@ export default function App() {
   const [voucherPhone, setVoucherPhone] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const checkoutWindowRef = useRef<Window | null>(null);
   const [myPaymentOrders, setMyPaymentOrders] = useState<PaymentOrder[]>([]);
   const [adminPaymentOrders, setAdminPaymentOrders] = useState<PaymentOrder[]>([]);
   const referralCodeFromUrl = new URLSearchParams(window.location.search).get('ref');
@@ -280,7 +281,10 @@ export default function App() {
   }
 
   async function startSubscriptionCheckout() {
-    if (!supabase || !session) { setNotice('Sign in before purchasing a subscription.'); return; }
+    if (!supabase || !session) {
+      setNotice('Sign in before purchasing a subscription.');
+      return;
+    }
     if (!selectedPrice?.enabled || !selectedPaymentAmount || Number(selectedPaymentAmount) <= 0) {
       setNotice('This plan is not available for payment yet. The DateMe owner must set a price and enable it first.');
       return;
@@ -289,33 +293,81 @@ export default function App() {
       if (!/^\d{16}$/.test(voucherPin.replace(/\s/g, ''))) { setNotice('Enter the 16-digit OneVoucher PIN.'); return; }
       if (!/^\+27\d{9}$/.test(voucherPhone.trim())) { setNotice('Enter a South African mobile number in +27 format.'); return; }
     }
+
+    // Open a blank tab synchronously from the user's tap so mobile browsers are less
+    // likely to block the provider redirect after the asynchronous invoice request.
+    let checkoutWindow: Window | null = null;
+    if (paymentProvider === 'nowpayments') {
+      try { checkoutWindow = window.open('about:blank', '_blank'); } catch { checkoutWindow = null; }
+      checkoutWindowRef.current = checkoutWindow;
+      if (checkoutWindow) {
+        try { checkoutWindow.document.title = 'Opening secure DateMe checkout…'; } catch { /* cross-window restrictions are non-fatal */ }
+      }
+    }
+
     setCheckoutBusy(true);
     setCheckoutUrl(null);
     setNotice('Starting secure checkout…');
-    const { data, error } = await supabase!.functions.invoke('create-subscription-payment', {
-      body: {
-        plan_code: selectedPlanCode,
-        provider: paymentProvider,
-        idempotency_key: crypto.randomUUID(),
-        ...(paymentProvider === 'kora_1voucher' ? { voucher_pin: voucherPin.replace(/\s/g, ''), phone_number: voucherPhone.trim() } : {}),
-      },
-    });
-    setCheckoutBusy(false);
-    setVoucherPin('');
-    if (error) {
-      const providerMessage = (data as { error?: string } | null)?.error;
-      setNotice(providerMessage || error.message || 'Could not start checkout. Please try again.');
-      return;
+    try {
+      const { data, error } = await supabase.functions.invoke('create-subscription-payment', {
+        body: {
+          plan_code: selectedPlanCode,
+          provider: paymentProvider,
+          idempotency_key: crypto.randomUUID(),
+          ...(paymentProvider === 'kora_1voucher' ? { voucher_pin: voucherPin.replace(/\s/g, ''), phone_number: voucherPhone.trim() } : {}),
+        },
+      });
+      setVoucherPin('');
+
+      if (error) {
+        let providerMessage = '';
+        // FunctionsHttpError carries the response in context; read its JSON body
+        // so an active-subscription message is shown instead of silently failing.
+        const response = (error as unknown as { context?: Response }).context;
+        if (response && typeof response.clone === 'function') {
+          try {
+            const payload = await response.clone().json() as { error?: string; message?: string };
+            providerMessage = payload.error || payload.message || '';
+          } catch { /* fall back to the SDK's error message below */ }
+        }
+        const message = providerMessage || error.message || 'Could not start checkout. Please try again.';
+        setNotice(message);
+        if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
+        checkoutWindowRef.current = null;
+        return;
+      }
+
+      const result = data as { order_id?: string; checkout_url?: string; status?: string; message?: string; error?: string } | null;
+      if (result?.error) {
+        setNotice(result.error);
+        if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
+        checkoutWindowRef.current = null;
+        return;
+      }
+
+      if (result?.checkout_url) {
+        setCheckoutUrl(result.checkout_url);
+        setNotice('Secure checkout is ready. DateMe activates your subscription only after the provider verifies payment. Do not send funds unless you choose to continue.');
+        if (paymentProvider === 'nowpayments' && checkoutWindow && !checkoutWindow.closed) {
+          checkoutWindow.location.href = result.checkout_url;
+          checkoutWindowRef.current = null;
+        } else if (paymentProvider === 'nowpayments') {
+          setNotice('Secure checkout is ready, but your browser blocked automatic opening. Tap “Open secure checkout” below.');
+        }
+      } else {
+        setNotice(result?.message || 'Payment started. Your subscription will unlock only after the payment provider confirms it.');
+        if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
+        checkoutWindowRef.current = null;
+      }
+      await refreshPaymentOrders();
+    } catch (checkoutError) {
+      const message = checkoutError instanceof Error ? checkoutError.message : 'Could not start checkout. Please try again.';
+      setNotice(message);
+      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
+      checkoutWindowRef.current = null;
+    } finally {
+      setCheckoutBusy(false);
     }
-    const result = data as { order_id?: string; checkout_url?: string; status?: string; message?: string; error?: string } | null;
-    if (result?.error) { setNotice(result.error); return; }
-    if (result?.checkout_url) {
-      setCheckoutUrl(result.checkout_url);
-      setNotice('Your secure checkout is ready. Open it below to complete payment. Your subscription activates only after the provider confirms payment.');
-    } else {
-      setNotice(result?.message || 'Payment started. Your subscription will unlock only after the payment provider confirms it.');
-    }
-    await refreshPaymentOrders();
   }
 
   async function saveSubscriptionPrice(planCode: string) {
